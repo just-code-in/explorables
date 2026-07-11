@@ -1,5 +1,241 @@
 <!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
-<title>Explorables</title>
-<h1>Explorables</h1>
-<p>Interactive explanations built on real physics. Under construction.</p>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Explorables — interactive explanations built on real physics</title>
+<meta name="description" content="Single-file, zero-dependency interactive explorables. Every constant traces to a published source; the interesting results emerge from the physics.">
+<style>
+  :root {
+    --paper:      #efe7d5;
+    --paper-warm: #e8dfc9;
+    --ink:        #1b3040;
+    --ink-soft:   #5b7186;
+    --ink-faint:  #9dabb6;
+    --rule:       #c3b696;
+    --magenta:    #a83266;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font-family: var(--serif); -webkit-text-size-adjust: 100%; }
+  body {
+    background-image:
+      radial-gradient(circle at 15% 5%, rgba(255,255,255,.55), transparent 55%),
+      radial-gradient(circle at 88% 92%, rgba(190,175,140,.20), transparent 50%);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 64px 22px 80px; }
+
+  header { border-bottom: 1px solid var(--rule); padding-bottom: 26px; margin-bottom: 34px; }
+  h1 {
+    font-size: clamp(34px, 7vw, 58px);
+    font-weight: 400; letter-spacing: .01em; margin: 0 0 14px; line-height: 1.05;
+  }
+  .manifesto {
+    margin: 0; max-width: 56ch; font-size: clamp(16px, 2.4vw, 19px);
+    line-height: 1.55; color: var(--ink-soft);
+  }
+  .manifesto strong { color: var(--ink); font-weight: 600; }
+
+  .grid { display: grid; gap: 20px; }
+
+  .card {
+    display: grid; grid-template-columns: 190px minmax(0, 1fr);
+    background: var(--paper-warm);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    text-decoration: none; color: inherit;
+    overflow: hidden;
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 2px 10px rgba(40,30,10,.05);
+  }
+  .card:hover, .card:focus-visible {
+    transform: translateY(-2px);
+    border-color: var(--magenta);
+    box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 8px 22px rgba(40,30,10,.11);
+    outline: none;
+  }
+  @media (max-width: 620px) { .card { grid-template-columns: minmax(0, 1fr); } }
+
+  .thumb { border-right: 1px solid var(--rule); background: #e4e8e2; }
+  @media (max-width: 620px) { .thumb { border-right: 0; border-bottom: 1px solid var(--rule); } }
+  .thumb canvas { display: block; width: 100%; height: auto; }
+
+  .cardbody { padding: 22px 24px 20px; }
+  .num {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 7px;
+  }
+  .card h2 { margin: 0 0 9px; font-size: clamp(21px, 3.4vw, 27px); font-weight: 400; letter-spacing: .01em; }
+  .hook { margin: 0 0 14px; font-size: 15px; line-height: 1.55; color: var(--ink-soft); }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-soft); border: 1px solid var(--rule); padding: 3px 7px; border-radius: 2px;
+  }
+  .tag.hi { color: var(--magenta); border-color: rgba(168,50,102,.42); }
+
+  .soon {
+    border: 1px dashed var(--rule); border-radius: 2px; padding: 20px 24px;
+    color: var(--ink-faint);
+  }
+  .soon p { margin: 0; font-size: 14.5px; line-height: 1.6; }
+  .soon p + p { margin-top: 8px; }
+  .soon .num { color: var(--ink-faint); margin: 0 0 8px; }
+  .soon strong { color: var(--ink-soft); }
+
+  .about { margin-top: 46px; border-top: 1px solid var(--rule); padding-top: 22px; max-width: 62ch; }
+  .about h3 {
+    font-family: var(--mono); font-size: 11px; font-weight: 400; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--ink-soft); margin: 0 0 12px;
+  }
+  .about p { font-size: 15px; line-height: 1.62; margin: 0 0 12px; color: var(--ink-soft); }
+  .about a { color: var(--magenta); text-decoration: none; border-bottom: 1px solid rgba(168,50,102,.35); }
+  .about a:hover { border-bottom-color: var(--magenta); }
+  .about strong { color: var(--ink); font-weight: 600; }
+  .about code { font-family: var(--mono); font-size: .87em; background: #ded3b8; padding: 1px 4px; border-radius: 2px; }
+
+  footer {
+    margin-top: 40px; font-family: var(--mono); font-size: 11px;
+    color: var(--ink-faint); letter-spacing: .05em; line-height: 1.7;
+  }
+  footer a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid var(--ink-faint); }
+  footer a:hover { color: var(--magenta); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Explorables</h1>
+    <p class="manifesto">
+      Interactive explanations built on real physics. Each one is a single file that runs in any
+      browser, forever. <strong>Every constant traces to a published source, and the interesting
+      result is one that emerges — never one that was drawn because it ought to look that way.</strong>
+    </p>
+  </header>
+
+  <div class="grid">
+
+    <a class="card" href="against-the-wind/">
+      <div class="thumb"><canvas id="t1" width="380" height="300" aria-hidden="true"></canvas></div>
+      <div class="cardbody">
+        <p class="num">Episode 1</p>
+        <h2>Against the Wind</h2>
+        <p class="hook">
+          A sailboat can sail <em>toward</em> the wind. Drag the wind around, watch the forces on the
+          sail and the keel, and see the no-go zone appear. Then switch to a Napoleonic square-rigger
+          and watch it yawn open to six points — a limit the simulation is never told, and works out
+          for itself.
+        </p>
+        <div class="tags">
+          <span class="tag hi">Live physics</span>
+          <span class="tag">Aerodynamics</span>
+          <span class="tag">Age of sail</span>
+          <span class="tag">16 assertions, green</span>
+        </div>
+      </div>
+    </a>
+
+    <div class="soon">
+      <p class="num">In the workshop</p>
+      <p>
+        <strong>Why Hexagons?</strong> — surface tension relaxes a honeycomb until 120° junctions
+        happen on their own. &nbsp;·&nbsp; <strong>One Photon at a Time</strong> — the double slit,
+        fired one particle at a time, assembling dot by dot. &nbsp;·&nbsp;
+        <strong>The Tides, Actually</strong> — why there are <em>two</em> bulges.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="about">
+    <h3>How these are made</h3>
+    <p>
+      Every episode runs the same six-stage pipeline, and the part worth stealing is the division of
+      labour: <strong>a fleet of research agents verifies the physics before a line of code is
+      written</strong>, each working under a standing instruction to write <code>UNVERIFIED</code>
+      rather than guess — and afterwards a browser agent drives the finished page through QA. The
+      fleet checks, tests and publishes. It never originates content. That is the whole anti-slop
+      gate.
+    </p>
+    <p>
+      It bites, too. Building Episode 1, the research fleet flatly refused to invent a polar diagram
+      it could not source. That cost a calibration target and left the page more honest than it would
+      otherwise have been. The playbook is written down in
+      <a href="https://github.com/just-code-in/explorables/blob/main/WORKSHOP.md">WORKSHOP.md</a>.
+    </p>
+  </div>
+
+  <footer>
+    <a href="https://github.com/just-code-in/explorables">Source on GitHub</a><br>
+    No trackers, no analytics, no build step, no framework.
+  </footer>
+
+</div>
+
+<script>
+/* A miniature of Episode 1: the two polar curves, engraved like a chart. The
+   shape is taken from what the simulation actually produces — square rig shut out
+   to six points and fastest with the wind free; sloop pointing high and fastest
+   on a reach. */
+(function () {
+  var c = document.getElementById('t1');
+  if (!c || !c.getContext) return;
+  var g = c.getContext('2d');
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var W = 380, H = 300;
+  c.width = W * dpr; c.height = H * dpr;
+  c.style.width = '100%';
+  g.scale(dpr, dpr);
+
+  g.fillStyle = '#e4e8e2';
+  g.fillRect(0, 0, W, H);
+
+  var cx = W / 2, cy = H / 2 + 4, R = 104;
+
+  for (var i = 1; i <= 3; i++) {
+    g.beginPath(); g.arc(cx, cy, R * i / 3, 0, 7);
+    g.strokeStyle = i === 3 ? 'rgba(27,48,64,.24)' : 'rgba(27,48,64,.10)';
+    g.lineWidth = 1; g.stroke();
+  }
+  for (var a = 0; a < 360; a += 30) {
+    g.beginPath(); g.moveTo(cx, cy);
+    g.lineTo(cx + Math.sin(a * Math.PI / 180) * R, cy - Math.cos(a * Math.PI / 180) * R);
+    g.strokeStyle = 'rgba(27,48,64,.07)'; g.lineWidth = 1; g.stroke();
+  }
+
+  // the square rig's no-go wedge — 69 degrees, which is where the sim puts it
+  g.beginPath(); g.moveTo(cx, cy);
+  g.arc(cx, cy, R, -Math.PI / 2 - 69 * Math.PI / 180, -Math.PI / 2 + 69 * Math.PI / 180);
+  g.closePath();
+  g.fillStyle = 'rgba(27,48,64,.06)'; g.fill();
+
+  function curve(noGo, peakAt, peakR, runR, color, dash, width) {
+    for (var s = 0; s < 2; s++) {
+      var sgn = s ? -1 : 1, started = false;
+      g.beginPath();
+      for (var t = noGo; t <= 180; t += 2) {
+        var u = (t - noGo) / (peakAt - noGo), v;
+        v = u <= 1 ? peakR * Math.sin(u * Math.PI / 2)
+                   : peakR - (peakR - runR) * Math.pow((t - peakAt) / (180 - peakAt), 1.7);
+        var ang = t * Math.PI / 180 * sgn;
+        var x = cx + Math.sin(ang) * v, y = cy - Math.cos(ang) * v;
+        if (!started) { g.moveTo(x, y); started = true; } else g.lineTo(x, y);
+      }
+      g.strokeStyle = color; g.lineWidth = width;
+      g.setLineDash(dash); g.stroke(); g.setLineDash([]);
+    }
+  }
+  curve(69, 118, R * 0.94, R * 0.62, 'rgba(27,48,64,.36)', [3, 3], 1.4);   // square rig
+  curve(49, 91,  R * 0.80, R * 0.64, '#a83266', [], 2);                    // sloop
+
+  g.font = '9px ui-monospace, Menlo, monospace';
+  g.fillStyle = 'rgba(27,48,64,.42)';
+  g.textAlign = 'center';
+  g.fillText('WIND', cx, cy - R - 7);
+})();
+</script>
+</body>
+</html>

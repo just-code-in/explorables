@@ -1,0 +1,1999 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Against the Wind — how a boat sails toward the wind</title>
+<meta name="description" content="An interactive sailing-physics simulation: why a modern sloop can sail toward the wind, and why a Napoleonic square-rigger mostly couldn't.">
+<style>
+  :root {
+    --paper:      #efe7d5;
+    --paper-warm: #e8dfc9;
+    --paper-deep: #ded3b8;
+    --ink:        #1b3040;
+    --ink-soft:   #5b7186;
+    --ink-faint:  #9dabb6;
+    --rule:       #c3b696;
+    --sea:        #e6e9e2;
+    --sea-deep:   #dbe2df;
+
+    --magenta:    #a83266;   /* Admiralty charts really do use magenta */
+    --wind:       #3f7ca6;
+    --drag:       #8a7048;
+    --keel:       #2c6f61;
+    --thrust:     #c2560e;
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,.5), transparent 60%),
+      radial-gradient(circle at 85% 80%, rgba(190,175,140,.22), transparent 55%);
+  }
+
+  .wrap { max-width: 1360px; margin: 0 auto; padding: 22px 18px 60px; }
+
+  /* ---------- masthead ---------- */
+  header { border-bottom: 1px solid var(--rule); padding-bottom: 14px; margin-bottom: 18px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 6px;
+  }
+  .eyebrow a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--ink-faint); }
+  .eyebrow a:hover { color: var(--magenta); border-color: var(--magenta); }
+  h1 {
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 400;
+    letter-spacing: .01em;
+    margin: 0 0 8px;
+  }
+  .standfirst {
+    margin: 0;
+    max-width: 62ch;
+    font-size: clamp(15px, 2.1vw, 17px);
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- layout ---------- */
+  .stage { display: grid; grid-template-columns: minmax(0, 1fr) 344px; gap: 18px; align-items: start; }
+  @media (max-width: 940px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+  .main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+  .panel {
+    background: var(--paper-warm);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 2px 10px rgba(40,30,10,.06);
+  }
+
+  #chartWrap { position: relative; overflow: hidden; }
+  #chart { display: block; width: 100%; height: auto; touch-action: none; cursor: grab; }
+  #chart.grabbing { cursor: grabbing; }
+
+  .stateTag {
+    position: absolute; left: 12px; top: 12px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    padding: 5px 9px; border: 1px solid var(--rule); background: rgba(239,231,213,.9);
+    color: var(--ink-soft); border-radius: 2px; pointer-events: none;
+  }
+  .stateTag[data-alarm="1"] { color: #fff; background: var(--magenta); border-color: var(--magenta); }
+
+  .hint {
+    position: absolute; right: 12px; bottom: 12px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
+    color: var(--ink-soft); background: rgba(239,231,213,.85);
+    border: 1px solid var(--rule); padding: 5px 8px; border-radius: 2px;
+    pointer-events: none; max-width: 58%; text-align: right; line-height: 1.5;
+  }
+  @media (max-width: 560px) { .hint { display: none; } }
+
+  /* ---------- side column ---------- */
+  .side { display: flex; flex-direction: column; gap: 14px; }
+  .panel .head {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--ink-soft); padding: 10px 12px; border-bottom: 1px solid var(--rule);
+  }
+  .panel .body { padding: 12px; }
+
+  #polar { display: block; width: 100%; height: auto; }
+
+  .readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--rule); }
+  .ro { background: var(--paper-warm); padding: 9px 11px; }
+  .ro .k {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-soft); display: block; margin-bottom: 3px;
+  }
+  .ro .v { font-family: var(--mono); font-size: 17px; font-variant-numeric: tabular-nums; }
+  .ro .v small { font-size: 10.5px; color: var(--ink-soft); margin-left: 2px; }
+  .ro[data-hi="1"] .v { color: var(--magenta); }
+
+  /* ---------- controls ---------- */
+  .ctl { display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .lbl {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .val { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 44px; background: transparent; margin: 0; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 2px; background: var(--ink-faint);
+  }
+  input[type=range]::-moz-range-track { height: 2px; background: var(--ink-faint); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 20px; height: 20px; margin-top: -9px; border-radius: 50%;
+    background: var(--paper); border: 2px solid var(--ink);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--paper); border: 2px solid var(--ink);
+  }
+  input[type=range]:disabled { opacity: .35; cursor: not-allowed; }
+  input[type=range]:focus-visible { outline: 2px solid var(--magenta); outline-offset: 4px; }
+
+  .seg { display: flex; border: 1px solid var(--ink); border-radius: 2px; overflow: hidden; }
+  .seg button {
+    flex: 1; min-height: 44px; padding: 0 10px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    background: transparent; color: var(--ink); border: 0; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .seg button:focus-visible { outline: 2px solid var(--magenta); outline-offset: -4px; }
+
+  .btn {
+    display: block; width: 100%; min-height: 44px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    background: transparent; color: var(--ink); border: 1px solid var(--ink);
+    border-radius: 2px; cursor: pointer;
+  }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn:disabled:hover { background: transparent; color: var(--ink); }
+  .btn:focus-visible { outline: 2px solid var(--magenta); outline-offset: 2px; }
+  .btn.ghost { border-color: var(--ink-faint); color: var(--ink-soft); }
+  .btn.ghost:hover { background: var(--ink-soft); color: var(--paper); }
+
+  .check { display: flex; align-items: center; gap: 9px; min-height: 44px; cursor: pointer; }
+  .check input { width: 17px; height: 17px; accent-color: var(--magenta); cursor: pointer; }
+  .check span {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
+  .legend i { display: inline-block; width: 15px; height: 2px; margin-right: 5px; vertical-align: middle; }
+  .legend span { font-family: var(--mono); font-size: 9.5px; letter-spacing: .05em; color: var(--ink-soft); white-space: nowrap; }
+
+  .note {
+    font-size: 12.5px; line-height: 1.55; color: var(--ink-soft);
+    border-left: 2px solid var(--magenta); padding-left: 10px; margin: 0;
+  }
+
+  /* ---------- prose ---------- */
+  .prose { margin-top: 34px; max-width: 72ch; }
+  .prose h2 {
+    font-size: 13px; font-family: var(--mono); font-weight: 400;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft);
+    border-top: 1px solid var(--rule); padding-top: 12px; margin: 30px 0 12px;
+  }
+  .prose p { line-height: 1.62; margin: 0 0 13px; font-size: 15.5px; }
+  .prose ul { line-height: 1.62; padding-left: 20px; font-size: 15.5px; }
+  .prose li { margin-bottom: 7px; }
+  .prose a { color: var(--magenta); text-decoration: none; border-bottom: 1px solid rgba(168,50,102,.35); }
+  .prose a:hover { border-bottom-color: var(--magenta); }
+  .prose code { font-family: var(--mono); font-size: .88em; background: var(--paper-deep); padding: 1px 4px; border-radius: 2px; }
+  .prose strong { font-weight: 600; color: var(--ink); }
+
+  footer {
+    margin-top: 40px; border-top: 1px solid var(--rule); padding-top: 14px;
+    font-family: var(--mono); font-size: 11px; color: var(--ink-faint); letter-spacing: .05em;
+  }
+  footer a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid var(--ink-faint); }
+  footer a:hover { color: var(--magenta); }
+
+  /* ---------- selftest ---------- */
+  #selftest { display: none; margin-top: 20px; }
+  #selftest.on { display: block; }
+  #selftest table { border-collapse: collapse; width: 100%; font-family: var(--mono); font-size: 11.5px; }
+  #selftest td { border-bottom: 1px solid var(--rule); padding: 6px 8px; vertical-align: top; }
+  #selftest td:first-child { width: 58px; font-weight: 700; letter-spacing: .06em; }
+  #selftest .pass td:first-child { color: var(--keel); }
+  #selftest .fail td:first-child { color: var(--magenta); }
+  #selftest td:last-child { color: var(--ink-soft); text-align: right; white-space: nowrap; }
+  .stTotal { font-family: var(--mono); font-size: 12px; padding: 10px 12px; border-top: 1px solid var(--rule); }
+
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow"><a href="../">Explorables</a> &nbsp;/&nbsp; Episode 1</p>
+    <h1>Against the Wind</h1>
+    <p class="standfirst">
+      A sailboat can sail <em>toward</em> the wind. That is not obvious, and for most of naval
+      history it was barely true. Drag the wind around, steer, and watch the forces that make it
+      work — then switch to a Napoleonic square-rigger and watch them stop working.
+    </p>
+  </header>
+
+  <div class="stage">
+
+    <div class="main">
+      <div class="panel" id="chartWrap">
+        <canvas id="chart" width="900" height="620" role="img"
+                aria-label="Top-down nautical chart showing a boat, the wind, and the forces acting on the sail and keel."></canvas>
+        <div class="stateTag" id="stateTag">Sailing</div>
+        <div class="hint">Drag the <b>wind arrow</b> to change wind &nbsp;·&nbsp; drag the <b>ring</b> to steer</div>
+      </div>
+
+      <div class="panel">
+        <div class="head">Why the square rig can't</div>
+        <div class="body">
+          <p class="note" id="caption">
+            Switch the rig and watch the grey wedge yawn open. A square sail's chord lies along its
+            yard, and the yard fouls the shrouds long before it comes round: <em>"in most ships the
+            sails make with the keel an angle of 40 degrees, or thereabouts, when close-hauled"</em>
+            (Steel, 1795). A sloop sheets to 7°. That one difference, plus the drag of all that
+            rigging, is the whole story — and it is why the ship holding the <em>weather gauge</em>,
+            the upwind position, decided whether a battle happened at all.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+
+      <div class="panel">
+        <div class="head">Polar — boat speed at every angle</div>
+        <div class="body" style="padding:8px">
+          <canvas id="polar" width="640" height="640" role="img"
+                  aria-label="Polar diagram plotting achieved boat speed against true wind angle."></canvas>
+        </div>
+        <div class="readouts">
+          <div class="ro"><span class="k">Boat speed</span><span class="v" id="roSpeed">0.0<small>kt</small></span></div>
+          <div class="ro" data-hi="1"><span class="k">VMG upwind</span><span class="v" id="roVmg">0.0<small>kt</small></span></div>
+          <div class="ro"><span class="k">True wind angle</span><span class="v" id="roTwa">0<small>°</small></span></div>
+          <div class="ro"><span class="k">Apparent wind</span><span class="v" id="roAwa">0<small>°</small></span></div>
+          <div class="ro"><span class="k">Leeway</span><span class="v" id="roLeeway">0.0<small>°</small></span></div>
+          <div class="ro"><span class="k">Angle of attack</span><span class="v" id="roAoa">0<small>°</small></span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="head">Controls</div>
+        <div class="body ctl">
+
+          <div>
+            <div class="lbl" style="margin-bottom:6px">Rig</div>
+            <div class="seg" role="group" aria-label="Choose rig">
+              <button id="rigSloop"  aria-pressed="true">Bermuda sloop</button>
+              <button id="rigSquare" aria-pressed="false">Square rig</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="row"><span class="lbl">True wind</span><span class="val" id="valWind">10.0 kt</span></div>
+            <input id="wind" type="range" min="0" max="30" step="0.5" value="10" aria-label="True wind speed in knots">
+          </div>
+
+          <div>
+            <div class="row">
+              <span class="lbl">Sheet / trim</span>
+              <span class="val" id="valTrim">auto</span>
+            </div>
+            <input id="trim" type="range" min="0" max="90" step="1" value="20" disabled aria-label="Sail trim angle in degrees">
+            <label class="check">
+              <input type="checkbox" id="autoTrim" checked>
+              <span>Auto-trim assist</span>
+            </label>
+          </div>
+
+          <label class="check" style="min-height:auto">
+            <input type="checkbox" id="vectors" checked>
+            <span>Show force vectors</span>
+          </label>
+
+          <div class="legend" id="legend">
+            <span><i style="background:var(--wind)"></i>Apparent wind</span>
+            <span><i style="background:var(--magenta)"></i>Sail lift</span>
+            <span><i style="background:var(--drag)"></i>Sail drag</span>
+            <span><i style="background:var(--keel)"></i>Keel side force</span>
+            <span><i style="background:var(--thrust)"></i>Net thrust</span>
+          </div>
+
+          <button class="btn" id="trace">Trace full polar</button>
+          <button class="btn ghost" id="reset">Reset</button>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="panel" id="selftest">
+    <div class="head">Self-test — the accuracy anchors, as runnable assertions</div>
+    <table id="stBody"></table>
+    <div class="stTotal" id="stTotal"></div>
+  </div>
+
+  <div class="prose">
+
+    <h2>What you're looking at</h2>
+    <p>
+      The sail is a wing. Air flowing across it is turned, and the sail is pushed
+      <strong>perpendicular to the airflow</strong> — that push is <span style="color:var(--magenta)">lift</span>, and it is
+      much larger than the <span style="color:var(--drag)">drag</span> pulling the boat downwind. Lift points mostly
+      <em>sideways</em>, which by itself would just shove the boat across the water. It doesn't, because the
+      <span style="color:var(--keel)">keel</span> is also a wing — a wing in water, which is 800 times denser than air. A
+      slip of only a few degrees (the <em>leeway</em> you can watch in the readout) is enough for the keel to
+      cancel almost all of that sideways push.
+    </p>
+    <p>
+      What survives the cancellation is a small forward component: <span style="color:var(--thrust)">net thrust</span>.
+      Turn on the vectors and you can watch it happen. The boat is squeezed forward between two wings pushing
+      in nearly opposite directions — like a wet watermelon seed pinched between finger and thumb.
+    </p>
+    <p>
+      Sail closer and closer to the wind and the angle of attack on the sail shrinks until the lift can no
+      longer pay for the drag. Then thrust goes to zero, the boat stops, and the sails shiver: <em>in irons</em>.
+      That dead wedge is why nobody sails <em>straight</em> at the wind — you zig-zag around it, and the polar
+      diagram tells you the best angle to zig at.
+    </p>
+
+    <h2>Things worth trying</h2>
+    <ul>
+      <li><strong>Turn off auto-trim</strong> and over-sheet the sail. Watch the angle of attack climb past
+        stall — lift collapses, drag explodes, and the boat slows down while the sail is pulled in <em>harder</em>.
+        Every new sailor does this.</li>
+      <li><strong>Watch the apparent wind.</strong> As the boat accelerates it drags the wind forward — the blue
+        arrow swings toward the bow. On a fast reach you end up sailing into a wind that partly doesn't exist
+        until you make it.</li>
+      <li><strong>Trace the full polar</strong> on each rig and compare. The sloop's fastest point of sail is a
+        reach, across the wind. The square rig's is downwind — because past the stall its sail isn't a wing at
+        all, just a very large, very effective bag.</li>
+    </ul>
+
+    <h2>Is this honest?</h2>
+    <p>
+      That is the only question that matters for a thing like this, so here is the full answer. Nothing on this
+      page is drawn because it ought to look that way. The polar curve, the no-go wedge, the stall, the in-irons
+      state — all of it is computed, every frame, from forces. If the physics were wrong, the picture would be
+      wrong, and you would be able to catch me.
+    </p>
+    <p>
+      The numbers were checked by a fleet of research agents working to one standing instruction: write
+      <code>UNVERIFIED</code> rather than guess. They used it, repeatedly and inconveniently, and what came back
+      is set out claim by claim in the <a href="FACTSHEET.md">fact sheet</a>. Three kinds of number went into
+      the model, and they do not have the same standing:
+    </p>
+    <ul>
+      <li><strong>Measured</strong> — the square rig's sail curve is real wind-tunnel data: a six-sail square
+        foremast, tested as a model of the training ship <em>Nippon Maru</em>, peaks at a lift coefficient of
+        about 1.0 and does not stall until 30° (Amemiya et al., 1992). The bracing limit is Steel's 40°. Air
+        density, seawater density, the ITTC friction line, induced drag as <code>CL²/(π·AR·e)</code>, Froude
+        scaling — all sourced.</li>
+      <li><strong>Fitted</strong> — the rig's windage. No source anyone could reach apportions the drag of a
+        square-rigger's masts, yards and standing rigging. It is therefore the model's one free parameter,
+        tuned so that the ship reproduces the six-point wall. Which makes it a prediction, and a checkable one:
+        for the arithmetic to work, that rigging has to drag like roughly 250 m² of flat plate.</li>
+      <li><strong>Unsourced, and flagged as such</strong> — the sloop's sail curve, and any published polar to
+        calibrate her against. ORC's certificate database, which would have both, is behind a login. So the
+        sloop's speeds are the model's <em>prediction</em>, not a fit to data. She comes out beating at 49° and
+        topping out at 5.9 knots against a 6.0-knot hull speed — which is roughly where a boat of that size
+        really lives. Treat that as a check she passed, not a target she was aimed at.</li>
+    </ul>
+    <p>
+      One result deserves its own paragraph, because it is the reason this page exists. <strong>The square
+      rig's six-point limit is set nowhere in the code.</strong> The model is told only that her sails brace no
+      closer than 40° to the keel — Steel, writing in 1795, with no idea what he was calibrating. Run the
+      forces and the wall appears on its own at <strong>69°</strong>. Six points is 67.5°. Count her leeway and
+      she makes good <strong>73.4°</strong>; Blunt, in 1824, worked the same figure out to 72.5–73.5°. Nobody
+      told the simulation any of that. It is two-hundred-year-old seamanship and a page of aerodynamics arriving
+      at the same number from opposite directions, and it is the strongest evidence I can offer you that the
+      thing is not lying.
+    </p>
+    <p>
+      And because the sloop's sail curve is the one thing here that was fitted rather than measured, the
+      <a href="?selftest=1">self-test</a> ends by taking it away from her: hand the sloop the square rig's own
+      measured, inferior wind-tunnel curve and she <em>still</em> beats at 52° against the square rig's 69°.
+      The modern boat's advantage isn't a number I chose. It is that she can sheet her sail to 7° off the
+      centreline, and the frigate cannot get within 40°.
+    </p>
+
+    <h2>What this model leaves out</h2>
+    <p>
+      Being honest includes being honest about the simplifications, so: <strong>no heel</strong> (a real boat
+      lays over, which spills wind and changes everything), <strong>no waves, current or tide</strong>, flat
+      water, <strong>quasi-static forces</strong> (no momentum in the sail, no dynamic stall),
+      <strong>one aggregate sail per rig</strong> rather than a real multi-sail trim problem, and no rudder drag.
+      The square-rigger is modelled as a generic Napoleonic frigate, not any specific ship. This is a model
+      that gets the <em>reasons</em> right; it is not a velocity-prediction program you should race with.
+    </p>
+
+  </div>
+
+  <footer>
+    Explorables · Episode 1 &nbsp;·&nbsp;
+    <a href="FACTSHEET.md">Fact sheet &amp; sources</a> &nbsp;·&nbsp;
+    <a href="?selftest=1">Run the self-test</a> &nbsp;·&nbsp;
+    <a href="https://github.com/just-code-in/explorables">Source</a>
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+/* ============================================================================
+   AGAINST THE WIND — a quasi-static sailing velocity-prediction model.
+
+   Everything visible on the page is computed from the forces below. Numbers
+   marked [SOURCED] trace to a citation in FACTSHEET.md. Numbers marked [FITTED]
+   are model coefficients chosen so the simulation reproduces the [SOURCED]
+   anchors — which are encoded as assertions in selfTest() at the bottom.
+   ============================================================================ */
+
+const KT      = 0.514444;      // m/s per knot
+const RHO_AIR = 1.225;         // kg/m^3   [SOURCED] ISO 2533, 15 C, sea level
+const RHO_SEA = 1026;          // kg/m^3   [SOURCED] seawater, S=35, 15 C, 0 dbar
+const NU_SEA  = 1.19e-6;       // m^2/s    kinematic viscosity, seawater @15 C
+const G       = 9.81;
+const FN_HULL = 0.40;          // Froude number of "hull speed"  [SOURCED] heuristic
+
+const rad = d => d * Math.PI / 180;
+const deg = r => r * 180 / Math.PI;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+function smoothstep(e0, e1, x) {
+  const t = clamp((x - e0) / (e1 - e0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+// Normalise to (-180, 180]
+function wrap180(a) { a = ((a % 360) + 360) % 360; return a > 180 ? a - 360 : a; }
+
+/* ---------------------------------------------------------------- vessels -- */
+
+const RIGS = {
+  sloop: {
+    key: 'sloop',
+    name: 'Bermuda sloop',
+    sub: 'J/24 one-design',
+
+    // hull + rig geometry -------------------------------------------- [SOURCED]
+    LWL:        6.10,      // m      J/24 waterline length
+    mass:       1406,      // kg     J/24 hull weight
+    sailArea:   24.26,     // m^2    main 12.68 + jib 11.58
+    draft:      1.22,      // m
+
+    // hydro / aero model parameters ----------------------------------- [FITTED]
+    Swet:       19.0,      // m^2    wetted surface
+    formK:      1.15,      // (1+k)  form factor on friction
+    Cr0:        0.0030,    //        residuary coefficient at Fn = FN_HULL
+    crExp:      8,         //        steepness of the wave-making knee
+    keelArea:   2.2,       // m^2
+    keelAR:     0.68,      //        span^2 / area  (span = draft)
+    keelE:      0.90,
+    leewayMax:  20,        // deg    keel stall
+    windageA:   2.0,       // m^2
+    windageCD:  0.8,
+
+    // sail aerofoil ---------------------------------------------------- [FITTED]
+    deltaMin:   7,         // deg    sheeted hardest in
+    deltaMax:   90,        // deg    boom on the shroud
+    CLmax:      1.50,
+    alphaStall: 20,        // deg
+    CD0:        0.05,
+    sailAR:     3.0,       //        rig height^2 / sail area (effective)
+    sailE:      0.85,
+    CNmax:      1.9,       //        flat-plate normal force at 90 deg
+    CDluff:     0.10,      //        flogging sail
+
+    // drawing
+    loa: 7.32, beam: 2.87, scale: 1.0
+  },
+
+  square: {
+    key: 'square',
+    name: 'Square rig',
+    sub: 'Napoleonic frigate',
+
+    // A generic c.1800 full-rigged 5th-rate. Dimensions are representative
+    // of the type, not of any one ship.                              [SOURCED*]
+    LWL:        40.0,      // m
+    mass:       1.0e6,     // kg     ~1000 tonnes
+    sailArea:   1800,      // m^2    plain sail
+    draft:      5.5,       // m
+
+    Swet:       600,       // m^2                                       [FITTED]
+    formK:      1.20,
+    Cr0:        0.0030,
+    crExp:      8,
+    keelArea:   190,       // m^2    lateral plane of the hull
+    keelAR:     0.16,      //        a hull is a dreadful foil
+    keelE:      0.80,
+    leewayMax:  25,
+
+    // Masts, yards, standing rigging, topsides. The ONE free parameter of this
+    // model: no source could be found that apportions square-rig windage. It is
+    // fitted so the simulation reproduces the six-point wall (see FACTSHEET.md).
+    windageA:   250,       // m^2                                       [FITTED]
+    windageCD:  0.90,
+
+    // "In most ships the sails make with the keel an angle of 40 degrees, or
+    // thereabouts, when close-hauled."  — David Steel, Seamanship (1795), p.53.
+    // The sail's chord lies along its yard, so this IS the minimum sheeting
+    // angle. Note it is NOT 67.5: the six-point wall is not set here.  [SOURCED]
+    deltaMin:   40,
+    deltaMax:   90,
+
+    // Wind-tunnel measurements of a six-sail square foremast array (Nippon Maru
+    // model, aggregate AR 2.22): CLmax ~1.0 at alpha 30 deg, no stall before
+    // 30 deg.  — Amemiya et al. 1992; Tatano et al. 1991.              [SOURCED]
+    CLmax:      1.00,
+    alphaStall: 30,
+    sailAR:     2.22,
+    sailE:      0.85,
+    CD0:        0.08,      //                                            [FITTED]
+    CNmax:      1.6,       //        a square sail past stall is a bag, not a plate
+    CDluff:     0.15,
+
+    loa: 46, beam: 12, scale: 0.16
+  }
+};
+
+for (const r of Object.values(RIGS)) {
+  r.hullSpeed = FN_HULL * Math.sqrt(G * r.LWL);   // m/s
+  r.mEff = r.mass * 1.10;                          // + surge added mass
+  r.keelSlope = 2 * Math.PI * r.keelAR / (r.keelAR + 2);  // per radian, low-AR lifting line
+}
+
+/* ------------------------------------------------------------ aerodynamics -- */
+/* Attached flow below stall (thin-aerofoil-like, peaking at alphaStall), blended
+   into flat-plate behaviour above it: a flat plate at 90 deg to the flow makes no
+   lift and enormous drag, which is exactly what a sail does when you sheet it in
+   too far — and exactly what a square sail does running downwind. */
+
+function sailCoeffs(alphaDeg, rig) {
+  if (!(alphaDeg > 0)) {
+    // Wind on the wrong side of the sail: it luffs. No lift, some flogging drag.
+    return { CL: 0, CD: rig.CDluff, luffing: true, stalled: false };
+  }
+  const a  = alphaDeg;
+  const aS = rig.alphaStall;
+
+  const CLa = rig.CLmax * Math.sin(Math.PI / 2 * a / aS);
+  const CDa = rig.CD0 + CLa * CLa / (Math.PI * rig.sailAR * rig.sailE);
+
+  const r   = rad(Math.min(a, 90));
+  const CN  = rig.CNmax * Math.sin(r);
+  const CLp = CN * Math.cos(r);
+  const CDp = rig.CD0 + CN * Math.sin(r);
+
+  const w = smoothstep(aS, aS + 12, a);
+  return {
+    CL: lerp(CLa, CLp, w),
+    CD: lerp(CDa, CDp, w),
+    luffing: false,
+    stalled: w > 0.5
+  };
+}
+
+/* ---------------------------------------------------------------- forces --- */
+/* Boat frame: +y = bow, +x = starboard. The true wind always comes from the
+   starboard side (twa in [0,180]); the world renderer mirrors for the other tack.
+   Returns forces in NEWTONS in the boat frame. */
+
+function sailForces(twaDeg, deltaDeg, twsMS, rig, v, lambdaDeg) {
+  const twa = rad(twaDeg);
+  // True wind as a FLOW vector (the direction the air is going).
+  const W = { x: -twsMS * Math.sin(twa), y: -twsMS * Math.cos(twa) };
+  // Boat velocity: crabbing to leeward (= to port) by the leeway angle.
+  const lam = rad(lambdaDeg);
+  const V = { x: -v * Math.sin(lam), y: v * Math.cos(lam) };
+  // Apparent wind.
+  const A = { x: W.x - V.x, y: W.y - V.y };
+  const Amag = Math.hypot(A.x, A.y);
+
+  if (Amag < 1e-6) {
+    return { Fx: 0, Fy: 0, A, Amag: 0, beta: 0, alpha: -deltaDeg,
+             CL: 0, CD: 0, luffing: true, stalled: false, L: 0, D: 0,
+             lhat: {x:0,y:0}, dhat: {x:0,y:0} };
+  }
+
+  // Apparent wind angle: where the wind comes FROM, off the bow. Always >= 0 here.
+  const beta  = deg(Math.atan2(-A.x, -A.y));
+  const alpha = Math.abs(beta) - deltaDeg;
+
+  const c = sailCoeffs(alpha, rig);
+  const q = 0.5 * RHO_AIR * Amag * Amag;
+  const L = q * rig.sailArea * c.CL;
+  const D = q * rig.sailArea * c.CD;
+
+  const dhat = { x: A.x / Amag, y: A.y / Amag };          // drag acts along the flow
+  // Lift acts perpendicular to the flow, toward the windward side. With the wind
+  // from starboard that is a -90 deg rotation of dhat: (x,y) -> (y,-x).
+  const lhat = { x: dhat.y, y: -dhat.x };
+
+  // Windage: masts, rigging, topsides. Pure drag along the apparent wind.
+  const Wd = q * rig.windageA * rig.windageCD;
+
+  return {
+    Fx: L * lhat.x + D * dhat.x + Wd * dhat.x,
+    Fy: L * lhat.y + D * dhat.y + Wd * dhat.y,
+    A, Amag, beta, alpha, CL: c.CL, CD: c.CD,
+    luffing: c.luffing, stalled: c.stalled, L, D, lhat, dhat, windage: Wd
+  };
+}
+
+/* How much side force the keel can actually make at this speed. It is a wing:
+   at a standstill it makes none, and past its stalling leeway it makes no more.
+   This matters — a boat leaving a mooring slides bodily sideways until the keel
+   has enough water flowing over it to bite. */
+function keelCapacity(v, rig) {
+  const vs = Math.max(v, 0.15);
+  const qv = 0.5 * RHO_SEA * vs * vs;
+  return qv * rig.keelArea * rig.keelSlope * rad(rig.leewayMax);
+}
+
+/* Hull resistance, opposing forward motion. Viscous (ITTC 1957 friction line)
+   + residuary (rises steeply through hull speed) + drag induced by the keel
+   making side force — and it can only be charged for the side force it is
+   actually able to make. */
+function hullDrag(v, sailSide, rig) {
+  const vv = Math.max(v, 1e-4);
+  const qv = 0.5 * RHO_SEA * v * v;
+
+  const Re = vv * rig.LWL / NU_SEA;
+  const Cf = 0.075 / Math.pow(Math.log10(Math.max(Re, 1e5)) - 2, 2);
+  const Rf = qv * rig.Swet * Cf * rig.formK;
+
+  const Fn = vv / Math.sqrt(G * rig.LWL);
+  const Cr = rig.Cr0 * Math.pow(Fn / FN_HULL, rig.crExp);
+  const Rr = qv * rig.Swet * Cr;
+
+  const vs = Math.max(v, 0.15);
+  const qvs = 0.5 * RHO_SEA * vs * vs;
+  const side = Math.min(Math.abs(sailSide), keelCapacity(v, rig));
+  const Ri = (side * side) /
+             (qvs * Math.PI * rig.keelAR * rig.keelArea * rig.keelE);
+
+  return Rf + Rr + Ri;
+}
+
+/* Leeway that makes the keel supply the side force the sail is demanding —
+   or its stalling angle, if the sail is demanding more than the keel can give. */
+function leewayFor(sideForce, v, rig) {
+  const vs = Math.max(v, 0.15);
+  const qv = 0.5 * RHO_SEA * vs * vs;
+  const lamRad = Math.abs(sideForce) / (qv * rig.keelArea * rig.keelSlope);
+  return clamp(deg(lamRad), 0, rig.leewayMax);
+}
+
+/* Net forward force (thrust minus resistance) for one candidate trim. */
+function netForward(twaDeg, deltaDeg, twsMS, rig, v, lambdaDeg) {
+  const f = sailForces(twaDeg, deltaDeg, twsMS, rig, v, lambdaDeg);
+  return f.Fy - hullDrag(v, f.Fx, rig);
+}
+
+/* Auto-trim: the sheet angle that maximises net forward force right now. This is
+   what a trimmer is doing, and its fixed point is the fastest steady speed. */
+function bestTrim(twaDeg, twsMS, rig, v, lambdaDeg) {
+  let best = -Infinity, bestD = rig.deltaMin;
+  for (let d = rig.deltaMin; d <= rig.deltaMax; d += 2) {
+    const n = netForward(twaDeg, d, twsMS, rig, v, lambdaDeg);
+    if (n > best) { best = n; bestD = d; }
+  }
+  // refine
+  for (let d = Math.max(rig.deltaMin, bestD - 2); d <= Math.min(rig.deltaMax, bestD + 2); d += 0.5) {
+    const n = netForward(twaDeg, d, twsMS, rig, v, lambdaDeg);
+    if (n > best) { best = n; bestD = d; }
+  }
+  return bestD;
+}
+
+/* One physics step. Mutates nothing; returns the new state + diagnostics. */
+function stepPhysics(twaDeg, twsMS, rig, v, lambdaDeg, deltaDeg, dt) {
+  const f    = sailForces(twaDeg, deltaDeg, twsMS, rig, v, lambdaDeg);
+  const drag = hullDrag(v, f.Fx, rig);
+  const net  = f.Fy - drag;
+
+  let vNew = v + (net / rig.mEff) * dt;
+  if (!isFinite(vNew)) vNew = 0;
+  vNew = clamp(vNew, 0, 40);                       // a boat cannot sail backwards here
+
+  const lamTarget = leewayFor(f.Fx, vNew, rig);
+  // relax leeway toward its equilibrium so it doesn't snap around at low speed
+  const lamNew = lerp(lambdaDeg, lamTarget, clamp(dt * 2.5, 0, 1));
+
+  return { v: vNew, lambda: lamNew, f, drag, net };
+}
+
+/* Steady state: integrate until it stops changing. Used for the polar sweep and
+   the self-test. Warm-starting from a nearby answer makes this cheap. */
+function steadyState(twaDeg, twsMS, rig, opts) {
+  opts = opts || {};
+  let v      = opts.v0 !== undefined ? opts.v0 : 0.5;
+  let lambda = opts.lam0 !== undefined ? opts.lam0 : 2;
+  let delta  = opts.delta;
+  const auto = delta === undefined;
+  const dt   = 0.5;
+
+  let last = v;
+  for (let i = 0; i < 500; i++) {
+    if (auto) delta = bestTrim(twaDeg, twsMS, rig, v, lambda);
+    const s = stepPhysics(twaDeg, twsMS, rig, v, lambda, delta, dt);
+    v = s.v; lambda = s.lambda;
+    if (i > 8 && Math.abs(v - last) < 1e-5) break;
+    last = v;
+  }
+  if (auto) delta = bestTrim(twaDeg, twsMS, rig, v, lambda);
+  const f = sailForces(twaDeg, delta, twsMS, rig, v, lambda);
+  return {
+    v, lambda, delta, f,
+    // Velocity made good is made good over the GROUND, so it is reckoned on the
+    // course she actually travels — her heading plus the leeway she is sliding.
+    vmg: v * Math.cos(rad(twaDeg + lambda)),
+    madeGood: twaDeg + lambda,
+    twa: twaDeg
+  };
+}
+
+/* Full polar: steady speed at every true wind angle. Warm-started, so it is fast. */
+function computePolar(twsMS, rig, stepDeg) {
+  stepDeg = stepDeg || 2;
+  const pts = [];
+  let v0 = 0.2, lam0 = 2;
+  for (let twa = 0; twa <= 180; twa += stepDeg) {
+    const s = steadyState(twa, twsMS, rig, { v0, lam0 });
+    // warm start the next angle, but don't drag a dead state along
+    v0 = Math.max(s.v, 0.2);
+    lam0 = s.lambda;
+    pts.push({ twa, v: s.v, vmg: s.vmg, lambda: s.lambda, delta: s.delta,
+               madeGood: s.madeGood });
+  }
+  return pts;
+}
+
+/* Summary statistics a sailor would actually care about.
+
+   A word on the no-go zone, because it is the thing this page is about. You can
+   always point closer to the wind than your best beat angle — you just go slower
+   and, once leeway is counted, you make LESS ground to windward for the trouble.
+   So the honest boundary of the no-go zone is not where thrust finally reaches
+   zero (that is further up, and useless besides): it is the closest heading from
+   which you still gain anything, which is the best-VMG angle. That is also what
+   sailing instructors mean by it, and what real polar diagrams show. It is
+   computed here, per rig, per wind speed — never hard-coded.
+
+   The dead zone — where she has not even steerage way and cannot be steered at
+   all — is reported separately. */
+function polarStats(pts, rig) {
+  const STEERAGE = 0.5 * KT;
+  let bestVmg = -Infinity, bestVmgTwa = null, bestVmgMadeGood = null;
+  let maxV = 0, maxVTwa = null;
+  let dead = 180;
+  let runV = 0;
+  for (const p of pts) {
+    if (p.vmg > bestVmg) { bestVmg = p.vmg; bestVmgTwa = p.twa; bestVmgMadeGood = p.madeGood; }
+    if (p.v > maxV) { maxV = p.v; maxVTwa = p.twa; }
+    if (p.v > STEERAGE && p.twa < dead) dead = p.twa;
+    if (p.twa === 180) runV = p.v;
+  }
+  return { bestVmg, bestVmgTwa, bestVmgMadeGood, maxV, maxVTwa,
+           noGo: bestVmgTwa, dead, runV, hullSpeed: rig.hullSpeed };
+}
+
+/* ============================================================================
+   WORLD STATE + RENDERING
+   ============================================================================ */
+
+const chart = document.getElementById('chart');
+const cx    = chart.getContext('2d');
+const polarC = document.getElementById('polar');
+const px    = polarC.getContext('2d');
+
+const S = {
+  rig: RIGS.sloop,
+  windFrom: 0,           // bearing the wind blows FROM, degrees
+  windKt: 10,
+  heading: 45,           // boat bearing
+  v: 0,
+  lambda: 0,
+  delta: 20,
+  autoTrim: true,
+  showVectors: true,
+  pos: { x: 0, y: 0 },   // world metres, for scrolling the chart under the boat
+  traced: { sloop: null, square: null },   // full polars
+  sailed: { sloop: new Float32Array(181), square: new Float32Array(181) },
+  stats:  { sloop: null, square: null },
+  sweep: null,           // { twa, pts, v0, lam0 } while tracing
+  wake: [],
+  particles: [],
+  flutter: 0
+};
+
+// The wind arrow handle lives at a fixed radius from the chart centre.
+let DRAG = null;   // 'wind' | 'heading' | null
+
+/* ---- resolution ---------------------------------------------------------- */
+function fitCanvas(c, ctx, aspect) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = c.clientWidth || c.width;
+  const h = aspect ? w * aspect : (c.clientHeight || c.height);
+  c.width  = Math.round(w * dpr);
+  c.height = Math.round(h * dpr);
+  c.style.height = h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { w, h };
+}
+let CH = { w: 900, h: 620 };
+let PL = { w: 320, h: 320 };
+
+function relayout() {
+  const narrow = window.innerWidth < 940;
+  CH = fitCanvas(chart, cx, narrow ? 1.0 : 0.78);
+  PL = fitCanvas(polarC, px, 1);
+  buildPaper();
+}
+
+/* ---- paper texture (drawn once) ------------------------------------------ */
+let paper = null;
+function buildPaper() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  paper = document.createElement('canvas');
+  paper.width = Math.max(1, Math.round(CH.w * dpr));
+  paper.height = Math.max(1, Math.round(CH.h * dpr));
+  const g = paper.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  g.fillStyle = '#eae2cd';
+  g.fillRect(0, 0, CH.w, CH.h);
+
+  // sea tint — deliberately flat, like a chart, not like the sea
+  g.fillStyle = '#e4e8e2';
+  g.fillRect(0, 0, CH.w, CH.h);
+
+  // fibrous speckle
+  let seed = 20260711;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  for (let i = 0; i < CH.w * CH.h / 90; i++) {
+    const x = rnd() * CH.w, y = rnd() * CH.h;
+    const a = rnd();
+    g.fillStyle = a > .55 ? 'rgba(160,145,110,.10)' : 'rgba(255,255,255,.16)';
+    g.fillRect(x, y, 1 + rnd() * 1.6, 1 + rnd() * 1.2);
+  }
+  // a faint aged blotch or two
+  for (let i = 0; i < 5; i++) {
+    const x = rnd() * CH.w, y = rnd() * CH.h, r = 60 + rnd() * 130;
+    const rg = g.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, 'rgba(178,158,110,.055)');
+    rg.addColorStop(1, 'rgba(178,158,110,0)');
+    g.fillStyle = rg;
+    g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  }
+}
+
+/* ---- helpers ------------------------------------------------------------- */
+const CSS = getComputedStyle(document.documentElement);
+const col = n => CSS.getPropertyValue(n).trim();
+let C = {};
+function readColors() {
+  C = {
+    ink: col('--ink'), inkSoft: col('--ink-soft'), inkFaint: col('--ink-faint'),
+    rule: col('--rule'), magenta: col('--magenta'), wind: col('--wind'),
+    drag: col('--drag'), keel: col('--keel'), thrust: col('--thrust'),
+    paper: col('--paper')
+  };
+}
+
+// bearing (deg, 0 = up/north, clockwise) -> screen unit vector
+function bvec(b) { const r = rad(b); return { x: Math.sin(r), y: -Math.cos(r) }; }
+
+function arrow(ctx, x0, y0, x1, y1, color, width, head) {
+  const dx = x1 - x0, dy = y1 - y0;
+  const len = Math.hypot(dx, dy);
+  if (len < 1.5) return;
+  head = head || Math.min(11, Math.max(5, len * 0.22));
+  const ux = dx / len, uy = dy / len;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = width || 2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1 - ux * head * 0.85, y1 - uy * head * 0.85);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - ux * head - uy * head * 0.42, y1 - uy * head + ux * head * 0.42);
+  ctx.lineTo(x1 - ux * head + uy * head * 0.42, y1 - uy * head - ux * head * 0.42);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/* ---- wind particles ------------------------------------------------------ */
+function seedParticles() {
+  S.particles = [];
+  for (let i = 0; i < 150; i++) {
+    S.particles.push({
+      x: Math.random() * CH.w,
+      y: Math.random() * CH.h,
+      len: 6 + Math.random() * 20,
+      a: 0.10 + Math.random() * 0.22
+    });
+  }
+}
+
+function drawWindField() {
+  const dir = bvec(S.windFrom + 180);       // where the wind is going
+  const sp = 0.55 + S.windKt * 0.135;
+  cx.lineCap = 'round';
+  for (const p of S.particles) {
+    p.x += dir.x * sp;
+    p.y += dir.y * sp;
+    const m = 40;
+    if (p.x < -m) p.x = CH.w + m; if (p.x > CH.w + m) p.x = -m;
+    if (p.y < -m) p.y = CH.h + m; if (p.y > CH.h + m) p.y = -m;
+    if (S.windKt < 0.2) continue;
+    const L = p.len * (0.35 + S.windKt / 26);
+    cx.strokeStyle = `rgba(63,124,166,${p.a * Math.min(1, S.windKt / 7)})`;
+    cx.lineWidth = 1;
+    cx.beginPath();
+    cx.moveTo(p.x - dir.x * L, p.y - dir.y * L);
+    cx.lineTo(p.x, p.y);
+    cx.stroke();
+  }
+}
+
+/* ---- chart furniture ----------------------------------------------------- */
+function drawGraticule() {
+  const step = 64;
+  const ox = -((S.pos.x * 1.4) % step + step) % step;
+  const oy =  ((S.pos.y * 1.4) % step + step) % step;
+  cx.strokeStyle = 'rgba(27,48,64,.055)';
+  cx.lineWidth = 1;
+  cx.beginPath();
+  for (let x = ox; x < CH.w + step; x += step) { cx.moveTo(x, 0); cx.lineTo(x, CH.h); }
+  for (let y = oy - step; y < CH.h + step; y += step) { cx.moveTo(0, y); cx.lineTo(CH.w, y); }
+  cx.stroke();
+}
+
+// Depth soundings scroll under the boat, so motion is legible even though the
+// boat stays in the middle of the chart.
+const SOUNDINGS = (() => {
+  let s = 7;
+  const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const a = [];
+  for (let i = 0; i < 90; i++) {
+    a.push({ x: rnd() * 3000 - 1500, y: rnd() * 3000 - 1500, d: (4 + Math.floor(rnd() * 46)) });
+  }
+  return a;
+})();
+
+function drawSoundings() {
+  const PPM = 1.35;   // px per world metre for the chart backdrop
+  cx.font = '10px ' + CSS.getPropertyValue('--mono');
+  cx.fillStyle = 'rgba(27,48,64,.26)';
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  const W = 3000;
+  for (const s of SOUNDINGS) {
+    let sx = (s.x - S.pos.x * 0.35) * PPM;
+    let sy = (s.y + S.pos.y * 0.35) * PPM;
+    sx = ((sx % (W * PPM)) + W * PPM) % (W * PPM) - W * PPM / 2 + CH.w / 2;
+    sy = ((sy % (W * PPM)) + W * PPM) % (W * PPM) - W * PPM / 2 + CH.h / 2;
+    if (sx < -20 || sx > CH.w + 20 || sy < -20 || sy > CH.h + 20) continue;
+    cx.fillText(s.d, sx, sy);
+  }
+  cx.textAlign = 'start';
+  cx.textBaseline = 'alphabetic';
+}
+
+function drawCompassRose(x, y, r) {
+  cx.save();
+  cx.translate(x, y);
+  cx.strokeStyle = 'rgba(27,48,64,.30)';
+  cx.lineWidth = 1;
+  cx.beginPath(); cx.arc(0, 0, r, 0, 7); cx.stroke();
+  cx.beginPath(); cx.arc(0, 0, r * 0.82, 0, 7); cx.stroke();
+
+  for (let i = 0; i < 32; i++) {
+    const a = rad(i * 11.25);
+    const big = i % 8 === 0, mid = i % 4 === 0;
+    const r0 = r * (big ? 0.62 : mid ? 0.74 : 0.79);
+    cx.beginPath();
+    cx.moveTo(Math.sin(a) * r0, -Math.cos(a) * r0);
+    cx.lineTo(Math.sin(a) * r * 0.82, -Math.cos(a) * r * 0.82);
+    cx.lineWidth = big ? 1.4 : 1;
+    cx.stroke();
+  }
+  // north star
+  cx.fillStyle = 'rgba(27,48,64,.42)';
+  cx.beginPath();
+  cx.moveTo(0, -r * 0.6);
+  cx.lineTo(r * 0.09, 0);
+  cx.lineTo(0, r * 0.16);
+  cx.lineTo(-r * 0.09, 0);
+  cx.closePath();
+  cx.fill();
+  cx.font = '11px ' + CSS.getPropertyValue('--mono');
+  cx.fillStyle = 'rgba(27,48,64,.45)';
+  cx.textAlign = 'center';
+  cx.fillText('N', 0, -r + 12);
+  cx.textAlign = 'start';
+  cx.restore();
+}
+
+/* ---- the boat ------------------------------------------------------------ */
+function boatPath(ctx, rig, L, B) {
+  // A plan-view hull: pointed bow, full midships, fine run aft.
+  ctx.beginPath();
+  ctx.moveTo(0, -L * 0.5);                                        // bow
+  ctx.bezierCurveTo( B * 0.62, -L * 0.24,  B * 0.5,  L * 0.10,  B * 0.34, L * 0.42);
+  ctx.lineTo(-B * 0.34, L * 0.42);                                 // transom
+  ctx.bezierCurveTo(-B * 0.5,  L * 0.10, -B * 0.62, -L * 0.24, 0, -L * 0.5);
+  ctx.closePath();
+}
+
+function drawSloop(ctx, L, B, delta, side, luffing, stalled) {
+  // hull
+  boatPath(ctx, S.rig, L, B);
+  ctx.fillStyle = 'rgba(244,238,222,.92)';
+  ctx.fill();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+
+  // deck line
+  ctx.beginPath();
+  ctx.moveTo(0, -L * 0.42); ctx.lineTo(0, L * 0.36);
+  ctx.strokeStyle = 'rgba(27,48,64,.22)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  const mastY = -L * 0.06;
+  const wob = luffing ? Math.sin(S.flutter * 9) * rad(7) : 0;
+  const th = rad(delta) * side + wob;
+
+  // mainsail: from the mast, aft, cambered to leeward
+  const boom = L * 0.46;
+  const ex = Math.sin(th) * boom * side * side;  // chord runs aft along the sheeting angle
+  const tipX = -Math.sin(th) * boom;
+  const tipY = mastY + Math.cos(th) * boom;
+  const camber = L * 0.075 * (luffing ? 0.25 : 1);
+  const mx = (0 + tipX) / 2 - Math.cos(th) * camber * side;
+  const my = (mastY + tipY) / 2 - Math.sin(th) * camber * side;
+
+  ctx.beginPath();
+  ctx.moveTo(0, mastY);
+  ctx.quadraticCurveTo(mx, my, tipX, tipY);
+  ctx.strokeStyle = stalled ? C.magenta : C.ink;
+  ctx.lineWidth = stalled ? 2.6 : 2.2;
+  ctx.stroke();
+
+  // jib: forward of the mast
+  const jl = L * 0.36;
+  const jtx = -Math.sin(th * 0.85) * jl * 0.55;
+  const jty = mastY - Math.cos(th * 0.85) * 0 - jl * 0.05;
+  const fx = 0, fy = -L * 0.46;
+  const jmx = (fx + jtx) / 2 - Math.cos(th) * camber * 0.8 * side;
+  const jmy = (fy + jty) / 2 - Math.sin(th) * camber * 0.8 * side;
+  ctx.beginPath();
+  ctx.moveTo(fx, fy);
+  ctx.quadraticCurveTo(jmx, jmy, jtx, jty);
+  ctx.lineWidth = stalled ? 2.2 : 1.8;
+  ctx.stroke();
+
+  // mast
+  ctx.beginPath();
+  ctx.arc(0, mastY, 2.6, 0, 7);
+  ctx.fillStyle = C.ink;
+  ctx.fill();
+}
+
+function drawSquare(ctx, L, B, delta, side, luffing, stalled) {
+  boatPath(ctx, S.rig, L, B);
+  ctx.fillStyle = 'rgba(244,238,222,.92)';
+  ctx.fill();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0, -L * 0.44); ctx.lineTo(0, L * 0.4);
+  ctx.strokeStyle = 'rgba(27,48,64,.22)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  const wob = luffing ? Math.sin(S.flutter * 9) * rad(5) : 0;
+  const th = rad(delta) * side + wob;
+  const masts = [-L * 0.26, L * 0.02, L * 0.28];   // fore, main, mizzen
+  const yardL = [B * 1.30, B * 1.42, B * 1.10];
+
+  masts.forEach((my2, i) => {
+    const half = yardL[i] / 2;
+    // The yard — and therefore the sail's chord — lies at `delta` off the centreline.
+    const ux = Math.sin(th + Math.PI / 2), uy = -Math.cos(th + Math.PI / 2);
+    const ax = my2 * 0 + ux * half,  ay = my2 + uy * half;
+    const bx = -ux * half,           by = my2 - uy * half;
+
+    // sail: shallow arc bellying downwind of the yard
+    const camber = B * 0.20 * (luffing ? 0.2 : 1);
+    const nx = -Math.sin(th) * side, ny = Math.cos(th) * side;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.quadraticCurveTo((ax + bx) / 2 - nx * camber, (ay + by) / 2 - ny * camber, bx, by);
+    ctx.strokeStyle = stalled ? C.magenta : 'rgba(27,48,64,.55)';
+    ctx.lineWidth = 3.2;
+    ctx.stroke();
+
+    // the yard itself
+    ctx.beginPath();
+    ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(0, my2, 2.4, 0, 7);
+    ctx.fillStyle = C.ink;
+    ctx.fill();
+  });
+}
+
+/* ---- the heading ring + wind handle -------------------------------------- */
+function ringRadius() { return Math.min(CH.w, CH.h) * 0.21; }
+// The handle's distance from the boat IS the wind strength: a longer arrow is
+// more wind. It never comes inside the steering ring, so the two never fight.
+function windMinR() { return ringRadius() + 46; }
+function windMaxR() { return Math.min(CH.w, CH.h) * 0.46; }
+
+function windHandlePos() {
+  const c = { x: CH.w / 2, y: CH.h / 2 };
+  const d = bvec(S.windFrom);
+  const r0 = windMinR(), r1 = Math.max(windMaxR(), r0 + 30);
+  const r = r0 + (r1 - r0) * clamp(S.windKt / 30, 0, 1);
+  return { x: c.x + d.x * r, y: c.y + d.y * r, cx: c.x, cy: c.y };
+}
+
+function drawWindArrow() {
+  const h = windHandlePos();
+  // The arrow flies FROM the handle TOWARD the boat — that is where the wind is
+  // going — but it stops at the ring. It must never be drawn across the boat.
+  const d = bvec(S.windFrom);
+  const tipR = ringRadius() + 12;
+  const tx = h.cx + d.x * tipR, ty = h.cy + d.y * tipR;
+
+  cx.setLineDash([5, 4]);
+  cx.strokeStyle = 'rgba(63,124,166,.28)';
+  cx.lineWidth = 1;
+  cx.beginPath();
+  cx.arc(h.cx, h.cy, Math.max(windMaxR(), windMinR() + 30), 0, 7);
+  cx.stroke();
+  cx.setLineDash([]);
+
+  arrow(cx, h.x, h.y, tx, ty, C.wind, 3, 13);
+
+  // grab handle
+  cx.beginPath();
+  cx.arc(h.x, h.y, 11, 0, 7);
+  cx.fillStyle = C.paper;
+  cx.fill();
+  cx.strokeStyle = C.wind;
+  cx.lineWidth = 2.2;
+  cx.stroke();
+  cx.beginPath();
+  cx.arc(h.x, h.y, 3.2, 0, 7);
+  cx.fillStyle = C.wind;
+  cx.fill();
+
+  // Offset the label to the SIDE of the handle. Above it, the handle collides
+  // with the state tag whenever the wind is out of the north.
+  const perp = { x: -d.y, y: d.x };
+  cx.font = '10px ' + CSS.getPropertyValue('--mono');
+  cx.fillStyle = C.wind;
+  cx.textAlign = 'center';
+  cx.fillText(S.windKt.toFixed(1) + ' kt', h.x + perp.x * 26, h.y + perp.y * 26 + 3);
+  cx.textAlign = 'start';
+}
+
+function drawHeadingRing() {
+  const c = { x: CH.w / 2, y: CH.h / 2 };
+  const r = ringRadius();
+
+  // the no-go wedge, computed — not drawn from a constant
+  const st = S.stats[S.rig.key];
+  if (st && st.noGo > 0) {
+    const a0 = rad(S.windFrom - st.noGo), a1 = rad(S.windFrom + st.noGo);
+    cx.beginPath();
+    cx.moveTo(c.x, c.y);
+    cx.arc(c.x, c.y, r * 1.42, a0 - Math.PI / 2, a1 - Math.PI / 2);
+    cx.closePath();
+    cx.fillStyle = 'rgba(27,48,64,.075)';
+    cx.fill();
+    cx.strokeStyle = 'rgba(27,48,64,.16)';
+    cx.setLineDash([3, 3]);
+    cx.lineWidth = 1;
+    cx.stroke();
+    cx.setLineDash([]);
+
+    // label the wedge on its EDGE, clear of the wind arrow that lives on its axis
+    const lab = bvec(S.windFrom + st.noGo);
+    cx.font = '10px ' + CSS.getPropertyValue('--mono');
+    cx.fillStyle = 'rgba(27,48,64,.45)';
+    cx.textAlign = 'center';
+    cx.fillText('NO-GO  ±' + Math.round(st.noGo) + '°',
+                c.x + lab.x * r * 1.60, c.y + lab.y * r * 1.60);
+    cx.textAlign = 'start';
+  }
+
+  cx.beginPath();
+  cx.arc(c.x, c.y, r, 0, 7);
+  cx.strokeStyle = 'rgba(27,48,64,.22)';
+  cx.lineWidth = 1;
+  cx.stroke();
+
+  for (let i = 0; i < 36; i++) {
+    const a = rad(i * 10);
+    const big = i % 9 === 0;
+    cx.beginPath();
+    cx.moveTo(c.x + Math.sin(a) * r, c.y - Math.cos(a) * r);
+    cx.lineTo(c.x + Math.sin(a) * (r + (big ? 7 : 4)), c.y - Math.cos(a) * (r + (big ? 7 : 4)));
+    cx.strokeStyle = 'rgba(27,48,64,.3)';
+    cx.lineWidth = big ? 1.4 : 1;
+    cx.stroke();
+  }
+
+  // the steering grip
+  const d = bvec(S.heading);
+  const gx = c.x + d.x * r, gy = c.y + d.y * r;
+  cx.beginPath();
+  cx.arc(gx, gy, 11, 0, 7);
+  cx.fillStyle = C.paper;
+  cx.fill();
+  cx.strokeStyle = C.ink;
+  cx.lineWidth = 2.2;
+  cx.stroke();
+  cx.beginPath();
+  cx.moveTo(gx - d.y * 4, gy + d.x * 4);
+  cx.lineTo(gx + d.x * 5, gy + d.y * 5);
+  cx.lineTo(gx + d.y * 4, gy - d.x * 4);
+  cx.closePath();
+  cx.fillStyle = C.ink;
+  cx.fill();
+}
+
+/* ---- force vectors ------------------------------------------------------- */
+function drawVectors(f, side) {
+  const c = { x: CH.w / 2, y: CH.h / 2 };
+  // Scale forces to pixels. sqrt keeps a 1000x range legible on one screen.
+  const ref = Math.max(1, S.rig.sailArea * 0.5 * RHO_AIR * 25);
+  const K = 118;
+  const sc = F => K * Math.sqrt(Math.max(0, F) / ref);
+
+  // Boat frame -> screen: rotate by heading, mirror x if on the other tack.
+  const hr = rad(S.heading);
+  const toScreen = (bx, by) => {
+    const x = bx * side;       // mirror for tack
+    const y = by;
+    // boat +y = bow (screen up before rotation), +x = starboard (screen right)
+    return {
+      x: c.x + (x * Math.cos(hr) - (-y) * Math.sin(hr)),
+      y: c.y + (x * Math.sin(hr) + (-y) * Math.cos(hr))
+    };
+  };
+
+  // apparent wind: draw it coming INTO the boat
+  if (f.Amag > 0.15) {
+    const aLen = 30 + Math.min(90, f.Amag * 9);
+    const from = toScreen(-f.dhat.x * aLen / 30, -f.dhat.y * aLen / 30);
+    const dirS = toScreen(-f.dhat.x, -f.dhat.y);
+    const ox = dirS.x - c.x, oy = dirS.y - c.y;
+    const m = Math.hypot(ox, oy) || 1;
+    arrow(cx, c.x + ox / m * (aLen + 46), c.y + oy / m * (aLen + 46),
+              c.x + ox / m * 30, c.y + oy / m * 30, C.wind, 2, 10);
+  }
+
+  const vec = (fx, fy, mag, color, w) => {
+    if (mag < 1e-3) return;
+    const s = toScreen(fx, fy);
+    const dx = s.x - c.x, dy = s.y - c.y;
+    const m = Math.hypot(dx, dy) || 1;
+    const L = sc(mag);
+    arrow(cx, c.x, c.y, c.x + dx / m * L, c.y + dy / m * L, color, w || 2.4);
+  };
+
+  vec(f.lhat.x, f.lhat.y, f.L, C.magenta, 2.6);              // sail lift
+  vec(f.dhat.x, f.dhat.y, f.D + f.windage, C.drag, 2.2);     // sail drag + windage
+
+  // keel side force: opposing the sail's lateral force, up to what it can make
+  const keel = Math.min(Math.abs(f.Fx), keelCapacity(S.v, S.rig));
+  vec(-Math.sign(f.Fx) || 1, 0, keel, C.keel, 2.4);
+
+  // net thrust: forward force minus hull drag, along the bow
+  const drag = hullDrag(S.v, f.Fx, S.rig);
+  const net = f.Fy - drag;
+  if (net > 0) vec(0, 1, net, C.thrust, 3.2);
+  else if (net < -1e-3) vec(0, -1, -net, C.thrust, 3.2);
+}
+
+/* ---- wake ---------------------------------------------------------------- */
+function drawWake() {
+  if (S.wake.length < 2) return;
+  cx.beginPath();
+  for (let i = 0; i < S.wake.length; i++) {
+    const p = S.wake[i];
+    const x = CH.w / 2 + (p.x - S.pos.x) * 1.35;
+    const y = CH.h / 2 - (p.y - S.pos.y) * 1.35;
+    i ? cx.lineTo(x, y) : cx.moveTo(x, y);
+  }
+  cx.strokeStyle = 'rgba(27,48,64,.16)';
+  cx.lineWidth = 1.4;
+  cx.setLineDash([2, 4]);
+  cx.stroke();
+  cx.setLineDash([]);
+}
+
+/* ---- the polar diagram --------------------------------------------------- */
+function drawPolar() {
+  const w = PL.w, h = PL.h;
+  px.clearRect(0, 0, w, h);
+
+  const cxp = w / 2, cyp = h * 0.50;
+  const R = Math.min(w, h) * 0.42;
+
+  const rig = S.rig;
+  const traced = S.traced[rig.key];
+  const other  = S.traced[rig.key === 'sloop' ? 'square' : 'sloop'];
+  const sailed = S.sailed[rig.key];
+
+  // scale: the fastest thing we know about, with headroom
+  let vmax = 1;
+  if (traced) for (const p of traced) vmax = Math.max(vmax, p.v);
+  for (let i = 0; i <= 180; i++) vmax = Math.max(vmax, sailed[i]);
+  vmax = Math.max(vmax, S.v);
+  const maxKt = Math.max(2, Math.ceil((vmax / KT) * 1.12));
+
+  const rOf = v => R * clamp((v / KT) / maxKt, 0, 1.02);
+  // TWA 0 (into the wind) points UP.
+  const pt = (twa, v, sgn) => {
+    const a = rad(twa) * (sgn || 1);
+    const r = rOf(v);
+    return { x: cxp + Math.sin(a) * r, y: cyp - Math.cos(a) * r };
+  };
+
+  // rings
+  px.font = '9px ' + CSS.getPropertyValue('--mono');
+  px.textAlign = 'center';
+  const rings = maxKt <= 8 ? 2 : maxKt <= 16 ? 4 : 5;
+  for (let i = 1; i <= rings; i++) {
+    const kt = maxKt * i / rings;
+    px.beginPath();
+    px.arc(cxp, cyp, R * i / rings, 0, 7);
+    px.strokeStyle = i === rings ? 'rgba(27,48,64,.28)' : 'rgba(27,48,64,.12)';
+    px.lineWidth = 1;
+    px.stroke();
+    px.fillStyle = 'rgba(27,48,64,.36)';
+    px.fillText(kt.toFixed(0), cxp + 1, cyp - R * i / rings - 3);
+  }
+  // spokes
+  for (let a = 0; a < 360; a += 30) {
+    px.beginPath();
+    px.moveTo(cxp, cyp);
+    px.lineTo(cxp + Math.sin(rad(a)) * R, cyp - Math.cos(rad(a)) * R);
+    px.strokeStyle = 'rgba(27,48,64,.08)';
+    px.lineWidth = 1;
+    px.stroke();
+  }
+  px.fillStyle = 'rgba(27,48,64,.42)';
+  px.fillText('WIND', cxp, cyp - R - 16);
+  px.fillText('0°', cxp, cyp - R - 5 + 0);
+  px.textAlign = 'left';
+  px.fillText('90°', cxp + R + 4, cyp + 3);
+  px.textAlign = 'right';
+  px.fillText('90°', cxp - R - 4, cyp + 3);
+  px.textAlign = 'center';
+  px.fillText('180°', cxp, cyp + R + 12);
+
+  // no-go wedge
+  const st = S.stats[rig.key];
+  if (st && st.noGo > 0) {
+    px.beginPath();
+    px.moveTo(cxp, cyp);
+    px.arc(cxp, cyp, R, -Math.PI / 2 - rad(st.noGo), -Math.PI / 2 + rad(st.noGo));
+    px.closePath();
+    px.fillStyle = 'rgba(27,48,64,.08)';
+    px.fill();
+  }
+
+  // the other rig, ghosted — the comparison is the whole point
+  if (other) {
+    px.beginPath();
+    for (let s = 0; s < 2; s++) {
+      const sgn = s ? -1 : 1;
+      other.forEach((p, i) => {
+        const q = pt(p.twa, p.v, sgn);
+        (i === 0 && s === 0) ? px.moveTo(q.x, q.y) : px.lineTo(q.x, q.y);
+      });
+    }
+    px.strokeStyle = 'rgba(27,48,64,.22)';
+    px.lineWidth = 1;
+    px.setLineDash([3, 3]);
+    px.stroke();
+    px.setLineDash([]);
+  }
+
+  // what the visitor has actually sailed
+  px.fillStyle = 'rgba(168,50,102,.34)';
+  for (let t = 0; t <= 180; t++) {
+    if (sailed[t] <= 0) continue;
+    for (const sgn of [1, -1]) {
+      const q = pt(t, sailed[t], sgn);
+      px.beginPath(); px.arc(q.x, q.y, 1.9, 0, 7); px.fill();
+    }
+  }
+
+  // the traced polar
+  if (traced) {
+    for (const sgn of [1, -1]) {
+      px.beginPath();
+      traced.forEach((p, i) => {
+        const q = pt(p.twa, p.v, sgn);
+        i ? px.lineTo(q.x, q.y) : px.moveTo(q.x, q.y);
+      });
+      px.strokeStyle = C.magenta;
+      px.lineWidth = 2;
+      px.stroke();
+    }
+  }
+  // partial sweep in progress
+  if (S.sweep && S.sweep.pts.length > 1) {
+    for (const sgn of [1, -1]) {
+      px.beginPath();
+      S.sweep.pts.forEach((p, i) => {
+        const q = pt(p.twa, p.v, sgn);
+        i ? px.lineTo(q.x, q.y) : px.moveTo(q.x, q.y);
+      });
+      px.strokeStyle = C.magenta;
+      px.lineWidth = 2;
+      px.stroke();
+    }
+  }
+
+  // best beat angle
+  if (st && st.bestVmgTwa != null && traced) {
+    const p = traced.find(z => z.twa === st.bestVmgTwa);
+    if (p) {
+      for (const sgn of [1, -1]) {
+        const q = pt(p.twa, p.v, sgn);
+        px.beginPath(); px.arc(q.x, q.y, 4, 0, 7);
+        px.fillStyle = C.thrust; px.fill();
+        px.strokeStyle = C.paper; px.lineWidth = 1.4; px.stroke();
+      }
+      px.fillStyle = C.thrust;
+      px.font = '10px ' + CSS.getPropertyValue('--mono');
+      px.textAlign = 'left';
+      const q = pt(p.twa, p.v, 1);
+      px.fillText('best beat ' + st.bestVmgTwa + '°', q.x + 7, q.y - 5);
+    }
+  }
+
+  // current position on the polar
+  const twaNow = Math.abs(wrap180(S.heading - S.windFrom));
+  const q = pt(twaNow, S.v, Math.sign(wrap180(S.heading - S.windFrom)) || 1);
+  px.beginPath(); px.arc(q.x, q.y, 4.6, 0, 7);
+  px.fillStyle = C.ink; px.fill();
+  px.strokeStyle = C.paper; px.lineWidth = 1.6; px.stroke();
+
+  px.textAlign = 'left';
+  px.font = '9.5px ' + CSS.getPropertyValue('--mono');
+  px.fillStyle = 'rgba(27,48,64,.45)';
+  px.fillText(rig.name.toUpperCase() + ' · ' + S.windKt.toFixed(0) + ' KT', 6, h - 6);
+  if (other) {
+    px.textAlign = 'right';
+    px.fillText('- - -  ' + (rig.key === 'sloop' ? 'SQUARE RIG' : 'SLOOP'), w - 6, h - 6);
+  }
+  px.textAlign = 'left';
+}
+
+/* ============================================================================
+   MAIN LOOP
+   ============================================================================ */
+
+let last = performance.now();
+
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  S.flutter += dt;
+
+  const rig  = S.rig;
+  const tws  = S.windKt * KT;
+  const rel  = wrap180(S.heading - S.windFrom);   // signed TWA
+  const twa  = Math.abs(rel);
+  const side = Math.sign(rel) || 1;               // +1: wind from starboard
+
+  // --- physics
+  if (S.autoTrim) S.delta = bestTrim(twa, tws, rig, S.v, S.lambda);
+  const st = stepPhysics(twa, tws, rig, S.v, S.lambda, S.delta, dt);
+  S.v = st.v;
+  S.lambda = st.lambda;
+  const f = st.f;
+
+  // --- move through the world (heading + leeway to leeward)
+  if (S.v > 1e-3) {
+    const course = S.heading + S.lambda * side * -1;   // leeway pushes away from the wind
+    const d = bvec(course);
+    S.pos.x += d.x * S.v * dt;
+    S.pos.y += -d.y * S.v * dt;
+    if (!S.wake.length ||
+        Math.hypot(S.pos.x - S.wake[S.wake.length - 1].x,
+                   S.pos.y - S.wake[S.wake.length - 1].y) > 3) {
+      S.wake.push({ x: S.pos.x, y: S.pos.y });
+      if (S.wake.length > 90) S.wake.shift();
+    }
+  }
+
+  // --- record what we have actually sailed (only once she has settled)
+  if (Math.abs(st.net) / rig.mEff < 0.02 && S.v > 0.05) {
+    const bin = Math.round(twa);
+    const arr = S.sailed[rig.key];
+    if (S.v > arr[bin]) arr[bin] = S.v;
+  }
+
+  // --- sweep animation
+  if (S.sweep) {
+    const sw = S.sweep;
+    for (let n = 0; n < 3 && sw.twa <= 180; n++) {
+      const s = steadyState(sw.twa, sw.tws, sw.rig, { v0: sw.v0, lam0: sw.lam0 });
+      sw.v0 = Math.max(s.v, 0.2);
+      sw.lam0 = s.lambda;
+      sw.pts.push({ twa: sw.twa, v: s.v, vmg: s.vmg, lambda: s.lambda, delta: s.delta });
+      sw.twa += 2;
+    }
+    if (sw.twa > 180) {
+      S.traced[sw.rig.key] = sw.pts;
+      S.stats[sw.rig.key]  = polarStats(sw.pts, sw.rig);
+      S.sweep = null;
+      document.getElementById('trace').disabled = false;
+      document.getElementById('trace').textContent = 'Trace full polar';
+    }
+  }
+
+  // --- draw chart
+  cx.clearRect(0, 0, CH.w, CH.h);
+  if (paper) cx.drawImage(paper, 0, 0, CH.w, CH.h);
+  drawGraticule();
+  drawSoundings();
+  const roseR = clamp(Math.min(CH.w, CH.h) * 0.075, 24, 48);
+  drawCompassRose(CH.w - roseR - 18, roseR + 18, roseR);
+  drawWindField();
+  drawWake();
+  drawHeadingRing();
+
+  cx.save();
+  cx.translate(CH.w / 2, CH.h / 2);
+  cx.rotate(rad(S.heading));
+  // Both vessels are drawn the same LENGTH on screen. We are comparing how they
+  // behave, not how big they are — a frigate at true scale would be a postage
+  // stamp beside its own no-go zone. Their beam:length ratios are honest.
+  const L = ringRadius() * 0.80;
+  const B = L * (rig.beam / rig.loa);
+  // sail sets to leeward: opposite the side the wind is on
+  const sailSide = -side;
+  if (rig.key === 'sloop') drawSloop(cx, L, B, S.delta, sailSide, f.luffing, f.stalled);
+  else                     drawSquare(cx, L, B, S.delta, sailSide, f.luffing, f.stalled);
+  cx.restore();
+
+  if (S.showVectors && S.windKt > 0.15) drawVectors(f, side);
+  drawWindArrow();
+
+  drawPolar();
+  updateReadouts(twa, f, st);
+
+  requestAnimationFrame(frame);
+}
+
+/* ---- readouts ------------------------------------------------------------ */
+const $ = id => document.getElementById(id);
+
+function updateReadouts(twa, f, st) {
+  const vmg = S.v * Math.cos(rad(twa)) / KT;
+  $('roSpeed').innerHTML   = (S.v / KT).toFixed(1) + '<small>kt</small>';
+  $('roVmg').innerHTML     = (vmg >= 0 ? '' : '−') + Math.abs(vmg).toFixed(1) + '<small>kt</small>';
+  $('roTwa').innerHTML     = Math.round(twa) + '<small>°</small>';
+  $('roAwa').innerHTML     = (f.Amag > 0.1 ? Math.round(Math.abs(f.beta)) : 0) + '<small>°</small>';
+  $('roLeeway').innerHTML  = S.lambda.toFixed(1) + '<small>°</small>';
+  $('roAoa').innerHTML     = (f.alpha > 0 ? Math.round(f.alpha) : 0) + '<small>°</small>';
+
+  const tag = $('stateTag');
+  let text = 'Sailing', alarm = '0';
+  const inIrons = S.v < 0.35 * KT && st.net <= 0 && S.windKt > 0.4;
+  const stats = S.stats[S.rig.key];
+  // Inside the no-go zone she may still creep forward — but she is gaining
+  // nothing to windward for it. Sailors call that pinching, and it is not
+  // the same as sailing close-hauled.
+  const pinching = stats && twa < stats.noGo && !inIrons && S.windKt > 0.4;
+  if (S.windKt < 0.4)      { text = 'Becalmed'; }
+  else if (inIrons)        { text = 'In irons'; alarm = '1'; }
+  else if (pinching)       { text = 'Pinching — no gain'; alarm = '1'; }
+  else if (f.luffing)      { text = 'Luffing'; alarm = '1'; }
+  else if (f.stalled)      { text = 'Sail stalled'; alarm = '1'; }
+  else if (twa < 60 && S.v > 0.5 * KT) { text = 'Close-hauled'; }
+  else if (twa < 80)  text = 'Close reach';
+  else if (twa < 100) text = 'Beam reach';
+  else if (twa < 150) text = 'Broad reach';
+  else                text = 'Running';
+  tag.textContent = text;
+  tag.dataset.alarm = alarm;
+}
+
+/* ---- interaction --------------------------------------------------------- */
+function evtPos(e) {
+  const r = chart.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return { x: (t.clientX - r.left) * (CH.w / r.width),
+           y: (t.clientY - r.top)  * (CH.h / r.height) };
+}
+function bearingOf(x, y) {
+  return (deg(Math.atan2(x - CH.w / 2, -(y - CH.h / 2))) + 360) % 360;
+}
+
+function pointerDown(e) {
+  const p = evtPos(e);
+  const wh = windHandlePos();
+  const c  = { x: CH.w / 2, y: CH.h / 2 };
+  const dWind = Math.hypot(p.x - wh.x, p.y - wh.y);
+  const dCent = Math.hypot(p.x - c.x, p.y - c.y);
+  const r = ringRadius();
+
+  if (dWind < 30) DRAG = 'wind';
+  else if (Math.abs(dCent - r) < 34) DRAG = 'heading';
+  else if (dCent > windMinR() - 12) DRAG = 'wind';
+  else DRAG = 'heading';
+
+  chart.classList.add('grabbing');
+  pointerMove(e);
+  e.preventDefault();
+}
+
+function pointerMove(e) {
+  if (!DRAG) return;
+  const p = evtPos(e);
+  const c = { x: CH.w / 2, y: CH.h / 2 };
+  if (DRAG === 'wind') {
+    S.windFrom = bearingOf(p.x, p.y);
+    const d = Math.hypot(p.x - c.x, p.y - c.y);
+    const r0 = windMinR(), r1 = Math.max(windMaxR(), r0 + 30);
+    const t = clamp((d - r0) / (r1 - r0), 0, 1);
+    S.windKt = Math.round(t * 30 * 2) / 2;
+    $('wind').value = S.windKt;
+    $('valWind').textContent = S.windKt.toFixed(1) + ' kt';
+    invalidatePolars();
+  } else {
+    S.heading = bearingOf(p.x, p.y);
+  }
+  e.preventDefault();
+}
+
+function pointerUp() { DRAG = null; chart.classList.remove('grabbing'); }
+
+chart.addEventListener('mousedown', pointerDown);
+window.addEventListener('mousemove', pointerMove);
+window.addEventListener('mouseup', pointerUp);
+chart.addEventListener('touchstart', pointerDown, { passive: false });
+chart.addEventListener('touchmove', pointerMove, { passive: false });
+window.addEventListener('touchend', pointerUp);
+
+/* Changing the wind invalidates any polar we traced at the old wind speed. */
+let lastPolarWind = null;
+function invalidatePolars() {
+  if (lastPolarWind !== null && Math.abs(lastPolarWind - S.windKt) > 0.01) {
+    S.traced.sloop = S.traced.square = null;
+    S.sailed.sloop = new Float32Array(181);
+    S.sailed.square = new Float32Array(181);
+    if (S.sweep) {                          // a sweep in flight is now meaningless
+      S.sweep = null;
+      $('trace').disabled = false;
+      $('trace').textContent = 'Trace full polar';
+    }
+    lastPolarWind = null;
+    recomputeStats();
+  }
+}
+
+/* We always want the no-go wedge, even before the visitor traces anything —
+   so compute a cheap coarse polar whenever the wind or rig changes. */
+let statsTimer = null;
+function recomputeStats() {
+  clearTimeout(statsTimer);
+  statsTimer = setTimeout(() => {
+    for (const key of ['sloop', 'square']) {
+      const rig = RIGS[key];
+      if (S.windKt < 0.4) { S.stats[key] = null; continue; }
+      const pts = computePolar(S.windKt * KT, rig, 5);
+      S.stats[key] = polarStats(pts, rig);
+    }
+  }, 60);
+}
+
+/* ---- controls ------------------------------------------------------------ */
+$('wind').addEventListener('input', e => {
+  S.windKt = parseFloat(e.target.value);
+  $('valWind').textContent = S.windKt.toFixed(1) + ' kt';
+  invalidatePolars();
+  recomputeStats();
+});
+
+$('trim').addEventListener('input', e => {
+  S.delta = parseFloat(e.target.value);
+  $('valTrim').textContent = S.delta.toFixed(0) + '°';
+});
+
+$('autoTrim').addEventListener('change', e => {
+  S.autoTrim = e.target.checked;
+  const sl = $('trim');
+  sl.disabled = S.autoTrim;
+  sl.min = S.rig.deltaMin;
+  sl.max = S.rig.deltaMax;
+  if (S.autoTrim) {
+    $('valTrim').textContent = 'auto';
+  } else {
+    S.delta = clamp(S.delta, S.rig.deltaMin, S.rig.deltaMax);
+    sl.value = S.delta;
+    $('valTrim').textContent = S.delta.toFixed(0) + '°';
+  }
+});
+
+$('vectors').addEventListener('change', e => { S.showVectors = e.target.checked; });
+
+function setRig(key) {
+  S.rig = RIGS[key];
+  S.v = Math.min(S.v, 1);
+  S.lambda = 0;
+  S.wake = [];
+  const sl = $('trim');
+  sl.min = S.rig.deltaMin;
+  sl.max = S.rig.deltaMax;
+  S.delta = clamp(S.delta, S.rig.deltaMin, S.rig.deltaMax);
+  sl.value = S.delta;
+  if (!S.autoTrim) $('valTrim').textContent = S.delta.toFixed(0) + '°';
+  $('rigSloop').setAttribute('aria-pressed', String(key === 'sloop'));
+  $('rigSquare').setAttribute('aria-pressed', String(key === 'square'));
+  recomputeStats();
+}
+$('rigSloop').addEventListener('click', () => setRig('sloop'));
+$('rigSquare').addEventListener('click', () => setRig('square'));
+
+$('trace').addEventListener('click', () => {
+  if (S.windKt < 0.5) return;
+  S.sweep = { twa: 0, tws: S.windKt * KT, rig: S.rig, pts: [], v0: 0.2, lam0: 2 };
+  lastPolarWind = S.windKt;
+  $('trace').disabled = true;
+  $('trace').textContent = 'Tracing…';
+});
+
+$('reset').addEventListener('click', () => {
+  S.windFrom = 0; S.windKt = 10; S.heading = 45;
+  S.v = 0; S.lambda = 0; S.delta = 20;
+  S.pos = { x: 0, y: 0 }; S.wake = [];
+  S.traced = { sloop: null, square: null };
+  S.sailed = { sloop: new Float32Array(181), square: new Float32Array(181) };
+  S.sweep = null;
+  lastPolarWind = null;
+  $('wind').value = 10;
+  $('valWind').textContent = '10.0 kt';
+  $('trace').disabled = false;
+  $('trace').textContent = 'Trace full polar';
+  setRig('sloop');
+});
+
+window.addEventListener('resize', () => { relayout(); seedParticles(); });
+
+/* ============================================================================
+   SELF-TEST — the accuracy anchors, as runnable assertions.  ?selftest=1
+   ============================================================================ */
+
+function selfTest() {
+  const R = [];
+  const ok = (name, pass, detail) => R.push({ name, pass: !!pass, detail });
+
+  const TWS10 = 10 * KT;
+  const sloop  = RIGS.sloop;
+  const square = RIGS.square;
+
+  const pS = computePolar(TWS10, sloop, 1);
+  const pQ = computePolar(TWS10, square, 1);
+  const sS = polarStats(pS, sloop);
+  const sQ = polarStats(pQ, square);
+
+  // ---- A1: the sloop beats at a realistic angle
+  ok('A1  sloop best-VMG beat angle 35–50°',
+     sS.bestVmgTwa >= 35 && sS.bestVmgTwa <= 50,
+     sS.bestVmgTwa + '°');
+
+  // ---- A2: fastest point of sail is a reach, not a run  [sourced: all polars]
+  ok('A2  sloop fastest on a reach (80–150°), not a run',
+     sS.maxVTwa >= 80 && sS.maxVTwa <= 150,
+     'max at ' + sS.maxVTwa + '°  (' + (sS.maxV / KT).toFixed(2) + ' kt)');
+
+  // ---- A3: she does not exceed hull speed by much  [sourced: Fn≈0.40 heuristic]
+  ok('A3  sloop max speed ≤ 1.15 × hull speed',
+     sS.maxV <= sloop.hullSpeed * 1.15,
+     (sS.maxV / KT).toFixed(2) + ' kt vs hull ' + (sloop.hullSpeed / KT).toFixed(2) + ' kt');
+
+  // ---- A4: running is slower than reaching
+  ok('A4  sloop run (180°) slower than her best reach',
+     sS.runV < sS.maxV * 0.97,
+     (sS.runV / KT).toFixed(2) + ' kt vs ' + (sS.maxV / KT).toFixed(2) + ' kt');
+
+  // ---- A5: THE anchor. "Can lie no nearer to the wind than six points" — and
+  // six points is 67.5°.  [sourced: Lever, Sheet Anchor, p.75; Blunt 1824, p.14]
+  // NOTE: nothing in the model is told this. It has to fall out of the sourced
+  // 40° sail-to-keel bracing limit (Steel 1795) plus rig windage and leeway.
+  ok('A5  square rig lies no nearer the wind than ~6 points (60–75°)',
+     sQ.bestVmgTwa >= 60 && sQ.bestVmgTwa <= 75,
+     'closest useful heading ' + sQ.bestVmgTwa + '°  (six points = 67.5°)');
+
+  // ---- A6: made good, after leeway, she does even worse
+  // [sourced: Blunt 1824 pp.63–64 — 5–6° leeway → ~72.5–73.5° made good]
+  ok('A6  square rig makes good ~70–78° after leeway',
+     sQ.bestVmgMadeGood >= 70 && sQ.bestVmgMadeGood <= 78,
+     'heading ' + sQ.bestVmgTwa + '° + ' +
+     (sQ.bestVmgMadeGood - sQ.bestVmgTwa).toFixed(1) + '° leeway = ' +
+     sQ.bestVmgMadeGood.toFixed(1) + '° made good');
+
+  // ---- A6b: and the sloop points far higher
+  ok('A6b sloop points ≥ 15° higher than the square rig',
+     sQ.bestVmgTwa - sS.bestVmgTwa >= 15,
+     'sloop ' + sS.bestVmgTwa + '° vs square ' + sQ.bestVmgTwa + '°');
+
+  // ---- A7: leeway falls as speed rises  [sourced: Blunt 1824, pp.63–64]
+  const lowV  = steadyState(75, 4 * KT,  square, {});
+  const highV = steadyState(75, 16 * KT, square, {});
+  ok('A7  square-rig leeway falls as she gains speed',
+     highV.v > lowV.v && highV.lambda < lowV.lambda,
+     lowV.lambda.toFixed(1) + '° @ ' + (lowV.v / KT).toFixed(1) + ' kt  →  ' +
+     highV.lambda.toFixed(1) + '° @ ' + (highV.v / KT).toFixed(1) + ' kt');
+
+  // ---- A8: in irons
+  const ironsS = steadyState(0, TWS10, sloop, {});
+  const ironsQ = steadyState(0, TWS10, square, {});
+  ok('A8  head to wind (0°): both rigs stop — in irons',
+     ironsS.v < 0.2 * KT && ironsQ.v < 0.2 * KT,
+     'sloop ' + (ironsS.v / KT).toFixed(3) + ' kt, square ' + (ironsQ.v / KT).toFixed(3) + ' kt');
+
+  // ---- A9: apparent wind draws forward of the true wind
+  const beat = steadyState(45, TWS10, sloop, {});
+  ok('A9  apparent wind draws forward when sailing (AWA < TWA)',
+     Math.abs(beat.f.beta) < 45 - 2 && beat.f.Amag > TWS10,
+     'TWA 45° → AWA ' + Math.abs(beat.f.beta).toFixed(1) + '°, ' +
+     'apparent ' + (beat.f.Amag / KT).toFixed(1) + ' kt > true 10.0 kt');
+
+  // ---- A10: over-sheeting stalls the sail and slows the boat
+  const good = steadyState(90, TWS10, sloop, {});
+  const over = steadyState(90, TWS10, sloop, { delta: 10 });
+  ok('A10 over-sheeting on a beam reach stalls and slows her',
+     over.v < good.v * 0.9 && over.f.alpha > sloop.alphaStall,
+     'auto (δ=' + good.delta.toFixed(0) + '°) ' + (good.v / KT).toFixed(2) + ' kt  →  ' +
+     'over-sheeted (δ=10°, α=' + over.f.alpha.toFixed(0) + '°) ' + (over.v / KT).toFixed(2) + ' kt');
+
+  // ---- A11: zero wind — she coasts to a stop, and nothing blows up
+  const calmS = steadyState(90, 0, sloop, {});
+  ok('A11 zero wind: coasts to a stop, no NaN',
+     calmS.v < 0.25 * KT && isFinite(calmS.lambda) && isFinite(calmS.f.Fy),
+     'v = ' + (calmS.v / KT).toFixed(3) + ' kt, leeway = ' + calmS.lambda.toFixed(2) + '°');
+
+  // ---- A12: nothing NaNs anywhere in the parameter space
+  let bad = 0, checked = 0;
+  for (const rig of [sloop, square]) {
+    for (let tws = 0; tws <= 30; tws += 2.5) {
+      for (let twa = 0; twa <= 180; twa += 10) {
+        for (let d = rig.deltaMin; d <= rig.deltaMax; d += 10) {
+          const s = steadyState(twa, tws * KT, rig, { delta: d });
+          checked++;
+          if (!isFinite(s.v) || !isFinite(s.lambda) || !isFinite(s.vmg) ||
+              !isFinite(s.f.Fx) || !isFinite(s.f.Fy) || s.v < 0) bad++;
+        }
+      }
+    }
+  }
+  ok('A12 no NaN across the whole parameter space',
+     bad === 0, checked.toLocaleString() + ' states swept, ' + bad + ' bad');
+
+  // ---- A13: the square rig is fastest with the wind free, not on the wind
+  ok('A13 square rig fastest with the wind free (≥ 100°)',
+     sQ.maxVTwa >= 100,
+     'max at ' + sQ.maxVTwa + '° (' + (sQ.maxV / KT).toFixed(2) + ' kt)');
+
+  // ---- A14: upwind VMG — the sloop is in a different league
+  ok('A14 sloop makes ≥ 2× the square rig\'s upwind VMG',
+     sS.bestVmg >= sQ.bestVmg * 2 && sQ.bestVmg > 0,
+     'sloop ' + (sS.bestVmg / KT).toFixed(2) + ' kt vs square ' +
+     (sQ.bestVmg / KT).toFixed(2) + ' kt made good to windward');
+
+  // ---- A15: the honesty check.
+  // The sloop's sail curve is the one thing in this model that is FITTED rather
+  // than measured, so the story would be worthless if it depended on it. Strip
+  // the sloop of its fitted advantage — hand it the square rig's own MEASURED
+  // wind-tunnel coefficients (CLmax 1.0, stall at 30°) — and it must still point
+  // far higher, purely because it can sheet to 7° off the centreline instead of
+  // 40°. If this fails, the result is an artefact of a number we made up.
+  const humbled = Object.assign({}, sloop, {
+    CLmax: square.CLmax, alphaStall: square.alphaStall,
+    sailAR: square.sailAR, sailE: square.sailE, CD0: square.CD0
+  });
+  const sH = polarStats(computePolar(TWS10, humbled, 1), humbled);
+  ok('A15 sloop still points ≥ 15° higher on the square rig\'s MEASURED sail curve',
+     sQ.bestVmgTwa - sH.bestVmgTwa >= 15 && sH.bestVmgTwa <= 55,
+     'sloop given CLmax ' + square.CLmax + '/stall ' + square.alphaStall + '° still beats at ' +
+     sH.bestVmgTwa + '° vs square ' + sQ.bestVmgTwa + '° — the advantage is the sheeting angle, not the fit');
+
+  return R;
+}
+
+function runSelfTest() {
+  const t0 = performance.now();
+  const R = selfTest();
+  const ms = performance.now() - t0;
+  const pass = R.filter(r => r.pass).length;
+
+  const panel = $('selftest');
+  panel.classList.add('on');
+  $('stBody').innerHTML = R.map(r =>
+    `<tr class="${r.pass ? 'pass' : 'fail'}">` +
+    `<td>${r.pass ? 'PASS' : 'FAIL'}</td>` +
+    `<td>${r.name}</td>` +
+    `<td>${r.detail}</td></tr>`).join('');
+  $('stTotal').innerHTML =
+    `<strong>${pass} / ${R.length} passed</strong> &nbsp;·&nbsp; ${ms.toFixed(0)} ms &nbsp;·&nbsp; ` +
+    (pass === R.length ? 'the model reproduces every anchor in FACTSHEET.md'
+                       : 'THE MODEL DISAGREES WITH THE SOURCES — do not ship');
+
+  console.log('%c Against the Wind — self-test ', 'background:#1b3040;color:#efe7d5;padding:2px 6px');
+  R.forEach(r => console.log((r.pass ? '  PASS  ' : '  FAIL  ') + r.name + '   ' + r.detail));
+  console.log(`  ${pass}/${R.length} passed in ${ms.toFixed(0)} ms`);
+  window.__SELFTEST__ = { pass, total: R.length, results: R };
+  return pass === R.length;
+}
+
+/* ---- go ------------------------------------------------------------------ */
+readColors();
+relayout();
+seedParticles();
+setRig('sloop');
+recomputeStats();
+requestAnimationFrame(frame);
+
+if (new URLSearchParams(location.search).has('selftest')) {
+  setTimeout(runSelfTest, 60);
+}
+window.__SIM__ = { S, RIGS, steadyState, computePolar, polarStats, selfTest, runSelfTest, KT };
+</script>
+</body>
+</html>
