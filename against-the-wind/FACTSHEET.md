@@ -212,7 +212,7 @@ These gaps are real, and the page states them rather than papering over them.
 
 ## 4. The anchors, as tests
 
-Run them yourself: **[index.html?selftest=1](index.html?selftest=1)** — 16
+Run them yourself: **[index.html?selftest=1](index.html?selftest=1)** — 19
 assertions, in the page, executing the same physics the animation uses.
 
 The ones that matter:
@@ -220,8 +220,8 @@ The ones that matter:
 | # | Assertion | Result |
 |---|---|---|
 | **A5** | Square rig lies no nearer the wind than ~6 points | **69°** (six points = 67.5°) |
-| **A6** | …and makes good 70–78° after leeway | **73.4°** (Blunt: 72.5–73.5°) |
-| A7 | Square-rig leeway *falls* as she gains speed (Blunt) | 7.0° @ 1.6 kt → 3.4° @ 8.8 kt |
+| **A6** | …and makes good 70–78° after leeway | **73.3°** (Blunt: 72.5–73.5°) |
+| A7 | Square-rig leeway *falls* as she gains speed (Blunt) | 3.4° @ 2.2 kt → 3.1° @ 9.1 kt |
 | A1 | Sloop beats at 35–50° | 49° |
 | A3 | Sloop does not exceed 1.15 × hull speed | 5.94 kt vs 6.01 kt |
 | A2 | Sloop is fastest on a reach, not a run | max at 91° |
@@ -229,11 +229,40 @@ The ones that matter:
 | A8 | Head to wind, both rigs stop — in irons | 0.000 kt |
 | A12 | No NaN anywhere in the parameter space | 3,705 states swept, 0 bad |
 | **A15** | Sloop's advantage survives losing its fitted sail curve | 52° vs 69° |
+| A16 | Running downwind, the boom goes all the way out | δ = 90°, both rigs |
+| A17 | Driving force is forward, and balances resistance at steady speed | within 0.0% |
+| **A18** | The *picture* does not lie, in world coordinates, on both tacks | 24 wind/heading combinations |
 
 **A5 and A6 are the result.** Nothing in the code is told about six points. The
 model is given Steel's 40° bracing limit — written down in 1795 by a man with no
 notion of a lift coefficient — and the six-point wall, and Blunt's made-good
 angle, both fall out of the force balance on their own.
+
+**A16 to A18 exist because a reader caught things by eye that no test was
+watching for**, and each one turned out to be a real defect:
+
+- **A16.** Angle of attack was clamped at 90°, which made every sheeting angle
+  compute *identically* when running dead downwind. Auto-trim had nothing to
+  choose between and picked one at random, so the boat ran downwind with her sail
+  hauled in tight. Unclamping it lets her discover that running means the boom
+  goes all the way out.
+- **A17.** The overlay drew a single "net thrust" arrow — the sail's forward force
+  *minus* hull resistance. At any steady speed those are equal, so the arrow
+  collapsed to nothing and flickered to whichever side the arithmetic noise fell
+  on; running downwind at four and a half knots it would sometimes point *astern*.
+  Now the forces are drawn, not the residual. Writing the assertion also exposed
+  that the steady-state solver was **integrating forward in time for only 250
+  simulated seconds** — nowhere near enough for a thousand-tonne frigate, whose
+  entire polar was consequently understated. It now solves the force balance
+  exactly, by bisection, and does not care what the ship weighs.
+- **A18.** The tack-side convention was **inverted**: a boat heading 075° with the
+  wind out of the north was treated as having it on her starboard bow when it was
+  plainly on her port. Every force vector on the chart was drawn as a mirror
+  image, and the boat made leeway *to windward*. The physics was right and the
+  picture was wrong, which no assertion about forces alone could ever have caught
+  — so A18 asserts the picture, in world coordinates, on both tacks. Chasing it
+  also revealed that leeway was hard-coded to *always* be to leeward; it is now
+  signed, and follows the sail's side force wherever it actually points.
 
 ---
 

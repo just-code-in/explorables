@@ -22,6 +22,8 @@
     --drag:       #8a7048;
     --keel:       #2c6f61;
     --thrust:     #c2560e;
+    --resist:     #6a4c93;
+    --course:     #16232e;
 
     --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
     --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
@@ -184,9 +186,17 @@
     color: var(--ink-soft);
   }
 
-  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
-  .legend i { display: inline-block; width: 15px; height: 2px; margin-right: 5px; vertical-align: middle; }
-  .legend span { font-family: var(--mono); font-size: 9.5px; letter-spacing: .05em; color: var(--ink-soft); white-space: nowrap; }
+  .legend { margin: 2px 0 0; padding: 12px 0 0; border-top: 1px solid var(--rule); }
+  .legend dt {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink); display: flex; align-items: center; gap: 7px;
+  }
+  .legend dt i { display: inline-block; width: 16px; height: 3px; flex: 0 0 16px; border-radius: 1px; }
+  .legend dd {
+    margin: 3px 0 11px 23px; font-size: 12.5px; line-height: 1.45; color: var(--ink-soft);
+  }
+  .legend dd:last-child { margin-bottom: 2px; }
+  .legend em { color: var(--ink); font-style: italic; }
 
   .note {
     font-size: 12.5px; line-height: 1.55; color: var(--ink-soft);
@@ -282,6 +292,8 @@
           <div class="ro"><span class="k">Apparent wind</span><span class="v" id="roAwa">0<small>°</small></span></div>
           <div class="ro"><span class="k">Leeway</span><span class="v" id="roLeeway">0.0<small>°</small></span></div>
           <div class="ro"><span class="k">Angle of attack</span><span class="v" id="roAoa">0<small>°</small></span></div>
+          <div class="ro"><span class="k">Heading</span><span class="v" id="roHeading">0<small>°</small></span></div>
+          <div class="ro"><span class="k">Course made</span><span class="v" id="roCourse">0<small>°</small></span></div>
         </div>
       </div>
 
@@ -319,13 +331,28 @@
             <span>Show force vectors</span>
           </label>
 
-          <div class="legend" id="legend">
-            <span><i style="background:var(--wind)"></i>Apparent wind</span>
-            <span><i style="background:var(--magenta)"></i>Sail lift</span>
-            <span><i style="background:var(--drag)"></i>Sail drag</span>
-            <span><i style="background:var(--keel)"></i>Keel side force</span>
-            <span><i style="background:var(--thrust)"></i>Net thrust</span>
-          </div>
+          <dl class="legend" id="legend">
+            <dt><i style="background:var(--course)"></i>Course</dt>
+            <dd>Where she is <em>actually</em> going — her heading plus the leeway she is sliding. Always shown.</dd>
+
+            <dt><i style="background:var(--wind)"></i>Apparent wind</dt>
+            <dd>The wind the sail <em>feels</em>: the true wind minus the boat's own motion. It swings forward as she speeds up.</dd>
+
+            <dt><i style="background:var(--magenta)"></i>Sail lift</dt>
+            <dd>Perpendicular to the apparent wind. The big one — and it points mostly sideways.</dd>
+
+            <dt><i style="background:var(--drag)"></i>Sail drag</dt>
+            <dd>Along the apparent wind, straight downwind. Includes the windage of mast and rigging.</dd>
+
+            <dt><i style="background:var(--keel)"></i>Keel side force</dt>
+            <dd>The keel, biting the water, cancelling nearly all of that sideways push.</dd>
+
+            <dt><i style="background:var(--thrust)"></i>Driving force</dt>
+            <dd>What survives the cancellation, pointing along the hull: the forward pull.</dd>
+
+            <dt><i style="background:var(--resist)"></i>Hull resistance</dt>
+            <dd>What holds her back. When it matches the driving force she stops accelerating — that is what a steady speed <em>is</em>.</dd>
+          </dl>
 
           <button class="btn" id="trace">Trace full polar</button>
           <button class="btn ghost" id="reset">Reset</button>
@@ -374,9 +401,14 @@
       <li><strong>Watch the apparent wind.</strong> As the boat accelerates it drags the wind forward — the blue
         arrow swings toward the bow. On a fast reach you end up sailing into a wind that partly doesn't exist
         until you make it.</li>
+      <li><strong>Bear away until the wind is dead astern.</strong> The boom goes right out, the lift vector
+        vanishes, and the sail's <em>drag</em> is doing all the work — she is being pushed, not pulled. The readout
+        will tell you the sail is stalled, and that is not a complaint: running downwind, a sail is supposed to be
+        a bag rather than a wing. Notice that the driving force and the hull's resistance are now the same length.
+        That is not a coincidence. It is what a steady speed <em>means</em>.</li>
       <li><strong>Trace the full polar</strong> on each rig and compare. The sloop's fastest point of sail is a
         reach, across the wind. The square rig's is downwind — because past the stall its sail isn't a wing at
-        all, just a very large, very effective bag.</li>
+        all, just a very large, very effective bag. That is why the trade routes went the way they went.</li>
     </ul>
 
     <h2>Is this honest?</h2>
@@ -432,8 +464,16 @@
       lays over, which spills wind and changes everything), <strong>no waves, current or tide</strong>, flat
       water, <strong>quasi-static forces</strong> (no momentum in the sail, no dynamic stall),
       <strong>one aggregate sail per rig</strong> rather than a real multi-sail trim problem, and no rudder drag.
-      The square-rigger is modelled as a generic Napoleonic frigate, not any specific ship. This is a model
-      that gets the <em>reasons</em> right; it is not a velocity-prediction program you should race with.
+      The square-rigger is modelled as a generic Napoleonic frigate, not any specific ship.
+    </p>
+    <p>
+      Two things on the screen are staged, and you should know which. Both vessels are drawn the <strong>same
+      length</strong> — we are comparing how they behave, not how big they are, and a frigate at true scale would
+      be a postage stamp beside her own no-go zone. And the frigate's <strong>acceleration is played at 12×</strong>:
+      a thousand tonnes really does need the better part of ten minutes to gather way, which is true and
+      unwatchable. Every force, and every speed she settles at, is exactly what the physics gives.
+      This is a model built to get the <em>reasons</em> right; it is not a velocity-prediction program you should
+      race with.
     </p>
 
   </div>
@@ -514,7 +554,7 @@ const RIGS = {
     CDluff:     0.10,      //        flogging sail
 
     // drawing
-    loa: 7.32, beam: 2.87, scale: 1.0
+    loa: 7.32, beam: 2.87, timeScale: 1
   },
 
   square: {
@@ -562,7 +602,12 @@ const RIGS = {
     CNmax:      1.6,       //        a square sail past stall is a bag, not a plate
     CDluff:     0.15,
 
-    loa: 46, beam: 12, scale: 0.16
+    loa: 46, beam: 12,
+
+    // A thousand tonnes accelerates at about 0.02 m/s². She needs the better part
+    // of ten minutes to gather way, which is true, and unwatchable. Her ANIMATION
+    // is played at 12× — the forces, and every speed she settles at, are untouched.
+    timeScale: 12
   }
 };
 
@@ -589,7 +634,12 @@ function sailCoeffs(alphaDeg, rig) {
   const CLa = rig.CLmax * Math.sin(Math.PI / 2 * a / aS);
   const CDa = rig.CD0 + CLa * CLa / (Math.PI * rig.sailAR * rig.sailE);
 
-  const r   = rad(Math.min(a, 90));
+  // Past 90° the flow attaches to the sail's OTHER face: the normal force falls
+  // away again and the lift reverses sign. Do not clamp this — clamping makes
+  // every trim identical when running dead downwind, so auto-trim has nothing to
+  // choose between and picks a sheeting angle at random. It must be free to
+  // discover that running means the boom goes all the way out.
+  const r   = rad(a);
   const CN  = rig.CNmax * Math.sin(r);
   const CLp = CN * Math.cos(r);
   const CDp = rig.CD0 + CN * Math.sin(r);
@@ -612,9 +662,14 @@ function sailForces(twaDeg, deltaDeg, twsMS, rig, v, lambdaDeg) {
   const twa = rad(twaDeg);
   // True wind as a FLOW vector (the direction the air is going).
   const W = { x: -twsMS * Math.sin(twa), y: -twsMS * Math.cos(twa) };
-  // Boat velocity: crabbing to leeward (= to port) by the leeway angle.
+  // Boat velocity. Leeway is SIGNED (+ = crabbing to starboard) and follows the
+  // sail's side force rather than being assumed. Upwind and reaching the sail
+  // pushes her to leeward and she crabs that way; but bear right away and the
+  // side force shrinks toward nothing and can even reverse, and she must be free
+  // to follow it. Hard-coding "she always slides to leeward" is an assumption,
+  // not a physical law.
   const lam = rad(lambdaDeg);
-  const V = { x: -v * Math.sin(lam), y: v * Math.cos(lam) };
+  const V = { x: v * Math.sin(lam), y: v * Math.cos(lam) };
   // Apparent wind.
   const A = { x: W.x - V.x, y: W.y - V.y };
   const Amag = Math.hypot(A.x, A.y);
@@ -685,13 +740,17 @@ function hullDrag(v, sailSide, rig) {
   return Rf + Rr + Ri;
 }
 
-/* Leeway that makes the keel supply the side force the sail is demanding —
-   or its stalling angle, if the sail is demanding more than the keel can give. */
+/* The leeway that makes the keel supply the side force the sail is demanding — or
+   its stalling angle, if the sail is demanding more than the keel can give.
+
+   SIGNED, and the sign is the whole point: a foil crabbing to starboard makes its
+   force to port. So the crab angle carries the same sign as the sail's side force,
+   and she slides to leeward only because that is the way the sail is shoving her. */
 function leewayFor(sideForce, v, rig) {
   const vs = Math.max(v, 0.15);
   const qv = 0.5 * RHO_SEA * vs * vs;
-  const lamRad = Math.abs(sideForce) / (qv * rig.keelArea * rig.keelSlope);
-  return clamp(deg(lamRad), 0, rig.leewayMax);
+  const lamRad = sideForce / (qv * rig.keelArea * rig.keelSlope);
+  return clamp(deg(lamRad), -rig.leewayMax, rig.leewayMax);
 }
 
 /* Net forward force (thrust minus resistance) for one candidate trim. */
@@ -733,32 +792,67 @@ function stepPhysics(twaDeg, twsMS, rig, v, lambdaDeg, deltaDeg, dt) {
   return { v: vNew, lambda: lamNew, f, drag, net };
 }
 
-/* Steady state: integrate until it stops changing. Used for the polar sweep and
-   the self-test. Warm-starting from a nearby answer makes this cheap. */
+/* Evaluate the boat AT a given speed: settle the leeway self-consistently (the
+   sail's side force sets the leeway, which changes the apparent wind, which
+   changes the side force), trim if we are allowed to, and report the net forward
+   force left over. */
+function evalAt(twaDeg, twsMS, rig, v, fixedDelta) {
+  const auto = fixedDelta === undefined;
+  let lam = 0, delta = auto ? rig.deltaMin : fixedDelta;
+  for (let outer = 0; outer < 2; outer++) {
+    if (auto) delta = bestTrim(twaDeg, twsMS, rig, v, lam);
+    for (let k = 0; k < 6; k++) {
+      const f = sailForces(twaDeg, delta, twsMS, rig, v, lam);
+      const t = leewayFor(f.Fx, v, rig);
+      const done = Math.abs(t - lam) < 1e-4;
+      lam = t;
+      if (done) break;
+    }
+  }
+  const f = sailForces(twaDeg, delta, twsMS, rig, v, lam);
+  return { f, lam, delta, net: f.Fy - hullDrag(v, f.Fx, rig) };
+}
+
+/* Steady state: the speed at which the net forward force is exactly zero.
+
+   This used to be found by integrating the boat's acceleration forward in time
+   until it stopped changing — and that was a real bug, caught by assertion A17.
+   The frigate weighs a thousand tonnes and accelerates at about 0.02 m/s². She
+   needs the better part of ten minutes to gather way, and the integrator gave her
+   250 seconds, so she was still accelerating when we wrote her speed down. Her
+   entire polar was understated.
+
+   So: solve it. Net forward force falls monotonically with speed, so bisect.
+   Exact, fast, and — crucially — it does not care how heavy the vessel is. */
 function steadyState(twaDeg, twsMS, rig, opts) {
   opts = opts || {};
-  let v      = opts.v0 !== undefined ? opts.v0 : 0.5;
-  let lambda = opts.lam0 !== undefined ? opts.lam0 : 2;
-  let delta  = opts.delta;
-  const auto = delta === undefined;
-  const dt   = 0.5;
+  const fixedDelta = opts.delta;
 
-  let last = v;
-  for (let i = 0; i < 500; i++) {
-    if (auto) delta = bestTrim(twaDeg, twsMS, rig, v, lambda);
-    const s = stepPhysics(twaDeg, twsMS, rig, v, lambda, delta, dt);
-    v = s.v; lambda = s.lambda;
-    if (i > 8 && Math.abs(v - last) < 1e-5) break;
-    last = v;
+  // Can she even get under way? If she cannot start from rest, she is in irons.
+  const rest = evalAt(twaDeg, twsMS, rig, 0, fixedDelta);
+  if (!(rest.net > 0)) {
+    return { v: 0, lambda: 0, delta: rest.delta, f: rest.f,
+             vmg: 0, madeGood: twaDeg, twa: twaDeg };
   }
-  if (auto) delta = bestTrim(twaDeg, twsMS, rig, v, lambda);
-  const f = sailForces(twaDeg, delta, twsMS, rig, v, lambda);
+
+  let lo = 0, hi = Math.max(2, rig.hullSpeed * 1.6);
+  for (let g = 0; g < 8 && evalAt(twaDeg, twsMS, rig, hi, fixedDelta).net > 0; g++) hi *= 1.5;
+
+  for (let i = 0; i < 26; i++) {
+    const mid = 0.5 * (lo + hi);
+    if (evalAt(twaDeg, twsMS, rig, mid, fixedDelta).net > 0) lo = mid; else hi = mid;
+  }
+  const v = 0.5 * (lo + hi);
+  const e = evalAt(twaDeg, twsMS, rig, v, fixedDelta);
+  // Velocity made good is made good over the GROUND, so it is reckoned on the
+  // course she actually travels. In the core frame the wind is on the starboard
+  // side, so crabbing to port (negative leeway) carries her AWAY from the wind:
+  // the angle she truly makes with the wind is twa - lam.
+  const madeGood = twaDeg - e.lam;
   return {
-    v, lambda, delta, f,
-    // Velocity made good is made good over the GROUND, so it is reckoned on the
-    // course she actually travels — her heading plus the leeway she is sliding.
-    vmg: v * Math.cos(rad(twaDeg + lambda)),
-    madeGood: twaDeg + lambda,
+    v, lambda: e.lam, delta: e.delta, f: e.f,
+    vmg: v * Math.cos(rad(madeGood)),
+    madeGood,
     twa: twaDeg
   };
 }
@@ -767,7 +861,7 @@ function steadyState(twaDeg, twsMS, rig, opts) {
 function computePolar(twsMS, rig, stepDeg) {
   stepDeg = stepDeg || 2;
   const pts = [];
-  let v0 = 0.2, lam0 = 2;
+  let v0 = 0.2, lam0 = 0;
   for (let twa = 0; twa <= 180; twa += stepDeg) {
     const s = steadyState(twa, twsMS, rig, { v0, lam0 });
     // warm start the next angle, but don't drag a dead state along
@@ -907,7 +1001,7 @@ function readColors() {
     ink: col('--ink'), inkSoft: col('--ink-soft'), inkFaint: col('--ink-faint'),
     rule: col('--rule'), magenta: col('--magenta'), wind: col('--wind'),
     drag: col('--drag'), keel: col('--keel'), thrust: col('--thrust'),
-    paper: col('--paper')
+    resist: col('--resist'), course: col('--course'), paper: col('--paper')
   };
 }
 
@@ -1213,13 +1307,11 @@ function drawWindArrow() {
   cx.fill();
 
   // Offset the label to the SIDE of the handle. Above it, the handle collides
-  // with the state tag whenever the wind is out of the north.
+  // with the state tag whenever the wind is out of the north. And say TRUE —
+  // there are two winds on this chart and they must never be confused.
   const perp = { x: -d.y, y: d.x };
-  cx.font = '10px ' + CSS.getPropertyValue('--mono');
-  cx.fillStyle = C.wind;
-  cx.textAlign = 'center';
-  cx.fillText(S.windKt.toFixed(1) + ' kt', h.x + perp.x * 26, h.y + perp.y * 26 + 3);
-  cx.textAlign = 'start';
+  label(h.x + perp.x * 32, h.y + perp.y * 32 - 4, 'TRUE WIND', C.wind);
+  label(h.x + perp.x * 32, h.y + perp.y * 32 + 8, S.windKt.toFixed(1) + ' KT', C.wind);
 }
 
 function drawHeadingRing() {
@@ -1288,58 +1380,124 @@ function drawHeadingRing() {
   cx.fill();
 }
 
-/* ---- force vectors ------------------------------------------------------- */
+/* ---- force vectors -------------------------------------------------------
+
+   A note on what is drawn here, because an earlier version got it wrong in a way
+   that was actively misleading. It drew a single "net thrust" arrow — the sail's
+   forward force MINUS the hull's resistance. But at any steady speed those two
+   are equal, because that is what steady means. So the arrow collapsed to nothing
+   whenever the boat settled, and flickered to whichever side the arithmetic noise
+   fell on. Running downwind at a perfectly good four and a half knots, it would
+   sometimes point astern, as if she were sailing backwards.
+
+   So we draw the FORCES, not the residual. The driving force pulls her forward;
+   the hull's resistance holds her back; when they are the same length she has
+   stopped accelerating, and that — not a vanishing arrow — is what constant speed
+   looks like.                                                                  */
+
+function boatToScreen(side) {
+  // Boat frame (+y = bow, +x = starboard) -> screen offsets. Mirrors for tack.
+  const hr = rad(S.heading);
+  return (bx, by) => {
+    const x = bx * side, y = by;
+    return { x: x * Math.cos(hr) - (-y) * Math.sin(hr),
+             y: x * Math.sin(hr) + (-y) * Math.cos(hr) };
+  };
+}
+
+// On a phone there is simply not room for the arrow captions — sail close to the
+// wind and the TRUE and APPARENT labels land on top of each other. Drop them at
+// narrow widths; the legend under the chart says the same thing with more room.
+function labelsFit() { return CH.w > 560; }
+
+function label(x, y, text, color) {
+  if (!labelsFit()) return;
+  cx.font = '9.5px ' + CSS.getPropertyValue('--mono');
+  cx.textAlign = 'center';
+  cx.lineWidth = 3;
+  cx.strokeStyle = 'rgba(239,231,213,.85)';
+  cx.strokeText(text, x, y);
+  cx.fillStyle = color;
+  cx.fillText(text, x, y);
+  cx.textAlign = 'start';
+  cx.lineWidth = 1;
+}
+
+/* Where she is ACTUALLY going: heading plus leeway. Always drawn — it is motion,
+   not a force, and it is the first thing anyone wants to know. */
+function drawCourse(side) {
+  if (S.v < 0.06) return;
+  const c = { x: CH.w / 2, y: CH.h / 2 };
+  const toS = boatToScreen(side);
+  // signed crab angle: + is to starboard in the core frame
+  const d = toS(Math.sin(rad(S.lambda)), Math.cos(rad(S.lambda)));
+  const m = Math.hypot(d.x, d.y) || 1;
+  const L = ringRadius() * (0.62 + 0.55 * clamp(S.v / S.rig.hullSpeed, 0, 1.1));
+  const ux = d.x / m, uy = d.y / m;
+
+  cx.setLineDash([6, 5]);
+  cx.strokeStyle = 'rgba(27,48,64,.30)';
+  cx.lineWidth = 1;
+  cx.beginPath();
+  cx.moveTo(c.x, c.y);
+  cx.lineTo(c.x + ux * (L + 34), c.y + uy * (L + 34));
+  cx.stroke();
+  cx.setLineDash([]);
+
+  arrow(cx, c.x, c.y, c.x + ux * L, c.y + uy * L, C.course, 3.4, 14);
+  label(c.x + ux * (L + 22), c.y + uy * (L + 22) + 3, 'COURSE', C.course);
+}
+
 function drawVectors(f, side) {
   const c = { x: CH.w / 2, y: CH.h / 2 };
-  // Scale forces to pixels. sqrt keeps a 1000x range legible on one screen.
+  // sqrt keeps a 1000x range of force legible on one screen
   const ref = Math.max(1, S.rig.sailArea * 0.5 * RHO_AIR * 25);
-  const K = 118;
-  const sc = F => K * Math.sqrt(Math.max(0, F) / ref);
+  const MAXL = ringRadius() * 1.8;
+  const sc = F => Math.min(MAXL, 118 * Math.sqrt(Math.max(0, F) / ref));
+  const toS = boatToScreen(side);
 
-  // Boat frame -> screen: rotate by heading, mirror x if on the other tack.
-  const hr = rad(S.heading);
-  const toScreen = (bx, by) => {
-    const x = bx * side;       // mirror for tack
-    const y = by;
-    // boat +y = bow (screen up before rotation), +x = starboard (screen right)
-    return {
-      x: c.x + (x * Math.cos(hr) - (-y) * Math.sin(hr)),
-      y: c.y + (x * Math.sin(hr) + (-y) * Math.cos(hr))
-    };
-  };
-
-  // apparent wind: draw it coming INTO the boat
+  // The apparent wind — the wind the SAIL actually feels: the true wind, minus
+  // the boat's own motion. Drawn flying into the boat, from where it comes.
+  // Offset sideways by a hair: running dead downwind everything on this chart goes
+  // collinear, and the wind would vanish underneath the resistance arrow. It is a
+  // direction indicator, not a force applied at a point, so nudging it is honest.
   if (f.Amag > 0.15) {
-    const aLen = 30 + Math.min(90, f.Amag * 9);
-    const from = toScreen(-f.dhat.x * aLen / 30, -f.dhat.y * aLen / 30);
-    const dirS = toScreen(-f.dhat.x, -f.dhat.y);
-    const ox = dirS.x - c.x, oy = dirS.y - c.y;
-    const m = Math.hypot(ox, oy) || 1;
-    arrow(cx, c.x + ox / m * (aLen + 46), c.y + oy / m * (aLen + 46),
-              c.x + ox / m * 30, c.y + oy / m * 30, C.wind, 2, 10);
+    const d = toS(-f.dhat.x, -f.dhat.y);
+    const m = Math.hypot(d.x, d.y) || 1;
+    const ux = d.x / m, uy = d.y / m;
+    const ox = -uy * 20, oy = ux * 20;          // 20px perpendicular
+    const L = 40 + Math.min(96, f.Amag * 9);
+    arrow(cx, c.x + ux * (L + 46) + ox, c.y + uy * (L + 46) + oy,
+              c.x + ux * 40 + ox,       c.y + uy * 40 + oy, C.wind, 2.4, 11);
+    label(c.x + ux * (L + 62) + ox, c.y + uy * (L + 62) + oy + 3,
+          'APPARENT ' + (f.Amag / KT).toFixed(0) + ' KT', C.wind);
   }
 
   const vec = (fx, fy, mag, color, w) => {
-    if (mag < 1e-3) return;
-    const s = toScreen(fx, fy);
-    const dx = s.x - c.x, dy = s.y - c.y;
-    const m = Math.hypot(dx, dy) || 1;
+    if (mag < 1e-3) return null;
+    const d = toS(fx, fy);
+    const m = Math.hypot(d.x, d.y) || 1;
     const L = sc(mag);
-    arrow(cx, c.x, c.y, c.x + dx / m * L, c.y + dy / m * L, color, w || 2.4);
+    arrow(cx, c.x, c.y, c.x + d.x / m * L, c.y + d.y / m * L, color, w || 2.4);
+    return { x: c.x + d.x / m * L, y: c.y + d.y / m * L };
   };
 
-  vec(f.lhat.x, f.lhat.y, f.L, C.magenta, 2.6);              // sail lift
-  vec(f.dhat.x, f.dhat.y, f.D + f.windage, C.drag, 2.2);     // sail drag + windage
+  vec(f.lhat.x, f.lhat.y, f.L, C.magenta, 2.6);            // lift, perpendicular to the flow
+  vec(f.dhat.x, f.dhat.y, f.D + f.windage, C.drag, 2.2);   // drag, along the flow
 
-  // keel side force: opposing the sail's lateral force, up to what it can make
+  // the keel, opposing the sail's sideways push — up to what it can actually make
   const keel = Math.min(Math.abs(f.Fx), keelCapacity(S.v, S.rig));
   vec(-Math.sign(f.Fx) || 1, 0, keel, C.keel, 2.4);
 
-  // net thrust: forward force minus hull drag, along the bow
-  const drag = hullDrag(S.v, f.Fx, S.rig);
-  const net = f.Fy - drag;
-  if (net > 0) vec(0, 1, net, C.thrust, 3.2);
-  else if (net < -1e-3) vec(0, -1, -net, C.thrust, 3.2);
+  // Driving force: the forward component of everything the air is doing to her.
+  // Positive whenever the sail is pulling; negative only when it is genuinely
+  // pushing her backwards, which is what being in irons IS.
+  if (f.Fy >= 0) vec(0, 1, f.Fy, C.thrust, 3.4);
+  else           vec(0, -1, -f.Fy, C.thrust, 3.4);
+
+  // Hull resistance: what holds her back. Equal to the driving force at a steady
+  // speed — that balance is why she stops accelerating.
+  vec(0, -1, hullDrag(S.v, f.Fx, S.rig), C.resist, 3.0);
 }
 
 /* ---- wake ---------------------------------------------------------------- */
@@ -1536,18 +1694,36 @@ function frame(now) {
   const tws  = S.windKt * KT;
   const rel  = wrap180(S.heading - S.windFrom);   // signed TWA
   const twa  = Math.abs(rel);
-  const side = Math.sign(rel) || 1;               // +1: wind from starboard
+  // Which side is the wind ACTUALLY on? The core solves everything with the wind
+  // to starboard; the world has to say when that is a mirror image. Note the sign:
+  // heading 075 with the wind out of the north puts it on the PORT bow, and an
+  // earlier version had this backwards — which quietly mirrored every force vector
+  // and made the boat drift to WINDWARD.
+  const side = -(Math.sign(rel) || 1);            // +1: wind is on the starboard side
 
-  // --- physics
+  // --- physics. Only the CLOCK is scaled (see rig.timeScale) — never the forces.
   if (S.autoTrim) S.delta = bestTrim(twa, tws, rig, S.v, S.lambda);
-  const st = stepPhysics(twa, tws, rig, S.v, S.lambda, S.delta, dt);
+  const st = stepPhysics(twa, tws, rig, S.v, S.lambda, S.delta, dt * rig.timeScale);
   S.v = st.v;
   S.lambda = st.lambda;
   const f = st.f;
 
+  // Is the sheet ACTUALLY mis-set? A stalled sail is only a fault if trimming it
+  // differently would go faster. Running downwind it is stalled by design.
+  S.badTrim = false;
+  if (S.windKt > 0.4 && S.v > 0.2 * KT) {
+    const bd   = bestTrim(twa, tws, rig, S.v, S.lambda);
+    const best = netForward(twa, bd, tws, rig, S.v, S.lambda);
+    const cur  = netForward(twa, S.delta, tws, rig, S.v, S.lambda);
+    S.badTrim = (best - cur) / (Math.abs(best) + Math.abs(cur) + 1) > 0.12;
+  }
+  const fault = f.luffing || (f.stalled && S.badTrim);
+
   // --- move through the world (heading + leeway to leeward)
   if (S.v > 1e-3) {
-    const course = S.heading + S.lambda * side * -1;   // leeway pushes away from the wind
+    // The crab angle is signed in the core frame (+ = to starboard); `side` maps
+    // that frame onto the world. Upwind this carries her away from the wind.
+    const course = S.heading + S.lambda * side;
     const d = bvec(course);
     S.pos.x += d.x * S.v * dt;
     S.pos.y += -d.y * S.v * dt;
@@ -1605,12 +1781,13 @@ function frame(now) {
   const L = ringRadius() * 0.80;
   const B = L * (rig.beam / rig.loa);
   // sail sets to leeward: opposite the side the wind is on
-  const sailSide = -side;
-  if (rig.key === 'sloop') drawSloop(cx, L, B, S.delta, sailSide, f.luffing, f.stalled);
-  else                     drawSquare(cx, L, B, S.delta, sailSide, f.luffing, f.stalled);
+  // the sail sets to LEEWARD — the opposite side from the wind
+  if (rig.key === 'sloop') drawSloop(cx, L, B, S.delta, side, f.luffing, fault);
+  else                     drawSquare(cx, L, B, S.delta, side, f.luffing, fault);
   cx.restore();
 
   if (S.showVectors && S.windKt > 0.15) drawVectors(f, side);
+  drawCourse(side);          // always: where she is going is not optional
   drawWindArrow();
 
   drawPolar();
@@ -1628,8 +1805,15 @@ function updateReadouts(twa, f, st) {
   $('roVmg').innerHTML     = (vmg >= 0 ? '' : '−') + Math.abs(vmg).toFixed(1) + '<small>kt</small>';
   $('roTwa').innerHTML     = Math.round(twa) + '<small>°</small>';
   $('roAwa').innerHTML     = (f.Amag > 0.1 ? Math.round(Math.abs(f.beta)) : 0) + '<small>°</small>';
-  $('roLeeway').innerHTML  = S.lambda.toFixed(1) + '<small>°</small>';
+  $('roLeeway').innerHTML  = Math.abs(S.lambda).toFixed(1) + '<small>°</small>';
   $('roAoa').innerHTML     = (f.alpha > 0 ? Math.round(f.alpha) : 0) + '<small>°</small>';
+  // heading is where the bow points; course is where she actually goes. The
+  // difference is the leeway she is sliding.
+  const rel  = wrap180(S.heading - S.windFrom);
+  const sgn  = -(Math.sign(rel) || 1);
+  const crs  = (S.heading + S.lambda * sgn + 360) % 360;
+  $('roHeading').innerHTML = Math.round(S.heading) + '<small>°</small>';
+  $('roCourse').innerHTML  = (S.v > 0.06 ? Math.round(crs) : Math.round(S.heading)) + '<small>°</small>';
 
   const tag = $('stateTag');
   let text = 'Sailing', alarm = '0';
@@ -1639,16 +1823,26 @@ function updateReadouts(twa, f, st) {
   // nothing to windward for it. Sailors call that pinching, and it is not
   // the same as sailing close-hauled.
   const pinching = stats && twa < stats.noGo && !inIrons && S.windKt > 0.4;
-  if (S.windKt < 0.4)      { text = 'Becalmed'; }
-  else if (inIrons)        { text = 'In irons'; alarm = '1'; }
-  else if (pinching)       { text = 'Pinching — no gain'; alarm = '1'; }
-  else if (f.luffing)      { text = 'Luffing'; alarm = '1'; }
-  else if (f.stalled)      { text = 'Sail stalled'; alarm = '1'; }
+
+  // A stalled sail is only a FAULT if a better trim was available. Running dead
+  // downwind the sail is fully stalled and that is exactly what you want — the
+  // sail has stopped being a wing and become a very effective bag. Flagging that
+  // in alarm colours told people something was wrong when nothing was.
+  const badTrim = !!S.badTrim;
+
+  if (S.windKt < 0.4)           { text = 'Becalmed'; }
+  else if (inIrons)             { text = 'In irons'; alarm = '1'; }
+  else if (pinching)            { text = 'Pinching — no gain'; alarm = '1'; }
+  else if (f.luffing)           { text = 'Luffing — sheet in'; alarm = '1'; }
+  else if (f.stalled && badTrim) { text = 'Stalled — ease the sheet'; alarm = '1'; }
+  else if (badTrim)             { text = 'Badly trimmed'; alarm = '1'; }
   else if (twa < 60 && S.v > 0.5 * KT) { text = 'Close-hauled'; }
   else if (twa < 80)  text = 'Close reach';
   else if (twa < 100) text = 'Beam reach';
   else if (twa < 150) text = 'Broad reach';
-  else                text = 'Running';
+  // Downwind the sail is a stalled bluff body by design, and it is her fastest
+  // way home in a square-rigger. Name it for what it is, not as a failure.
+  else                text = f.stalled ? 'Running — sail as a drag device' : 'Running';
   tag.textContent = text;
   tag.dataset.alarm = alarm;
 }
@@ -1877,9 +2071,9 @@ function selfTest() {
   const lowV  = steadyState(75, 4 * KT,  square, {});
   const highV = steadyState(75, 16 * KT, square, {});
   ok('A7  square-rig leeway falls as she gains speed',
-     highV.v > lowV.v && highV.lambda < lowV.lambda,
-     lowV.lambda.toFixed(1) + '° @ ' + (lowV.v / KT).toFixed(1) + ' kt  →  ' +
-     highV.lambda.toFixed(1) + '° @ ' + (highV.v / KT).toFixed(1) + ' kt');
+     highV.v > lowV.v && Math.abs(highV.lambda) < Math.abs(lowV.lambda),
+     Math.abs(lowV.lambda).toFixed(1) + '° @ ' + (lowV.v / KT).toFixed(1) + ' kt  →  ' +
+     Math.abs(highV.lambda).toFixed(1) + '° @ ' + (highV.v / KT).toFixed(1) + ' kt');
 
   // ---- A8: in irons
   const ironsS = steadyState(0, TWS10, sloop, {});
@@ -1953,6 +2147,94 @@ function selfTest() {
      sQ.bestVmgTwa - sH.bestVmgTwa >= 15 && sH.bestVmgTwa <= 55,
      'sloop given CLmax ' + square.CLmax + '/stall ' + square.alphaStall + '° still beats at ' +
      sH.bestVmgTwa + '° vs square ' + sQ.bestVmgTwa + '° — the advantage is the sheeting angle, not the fit');
+
+  // ---- A16: running dead downwind, the boom goes all the way OUT, and she sails
+  // FORWARD. An earlier version clamped angle of attack at 90°, which made every
+  // trim identical downwind — auto-trim then picked a sheeting angle at random and
+  // drew the boat running with her sail hauled in tight.
+  const runS = steadyState(180, TWS10, sloop, {});
+  const runQ = steadyState(180, TWS10, square, {});
+  ok('A16 running dead downwind: boom right out (δ ≥ 75°), sailing forward',
+     runS.delta >= 75 && runS.v > 3 * KT && runQ.delta >= 75 && runQ.v > 0,
+     'sloop δ=' + runS.delta.toFixed(0) + '° at ' + (runS.v / KT).toFixed(2) + ' kt · ' +
+     'square δ=' + runQ.delta.toFixed(0) + '° at ' + (runQ.v / KT).toFixed(2) + ' kt');
+
+  // ---- A17: driving force is FORWARD, and at a steady speed it is balanced by
+  // hull resistance. That balance is what "steady" means — and it is why drawing
+  // their DIFFERENCE as a single arrow was useless: it is always ~zero.
+  let worst = 0, drives = true;
+  for (const [rig, twa] of [[sloop, 45], [sloop, 90], [sloop, 180], [square, 90], [square, 150]]) {
+    const s = steadyState(twa, TWS10, rig, {});
+    const resist = hullDrag(s.v, s.f.Fx, rig);
+    if (s.f.Fy <= 0) drives = false;
+    const rel = Math.abs(s.f.Fy - resist) / Math.max(s.f.Fy, resist, 1);
+    worst = Math.max(worst, rel);
+  }
+  ok('A17 driving force is forward, and balances hull resistance at steady speed',
+     drives && worst < 0.02,
+     'across 5 points of sail: driving force always > 0, and within ' +
+     (worst * 100).toFixed(1) + '% of resistance at equilibrium');
+
+  // ---- A18: THE PICTURE MUST NOT LIE.
+  // A tack-side sign error once mirrored every force vector on the chart and blew
+  // the boat to WINDWARD, against the wind that was pushing her. The physics was
+  // right; the picture was its mirror image — and no assertion about forces alone
+  // could ever have caught that. So assert the picture, in world coordinates, on
+  // BOTH tacks and all round the compass:
+  //   1. Sailing upwind or reaching, she must make leeway to LEEWARD.
+  //   2. The keel's force must always OPPOSE the sail's side force.
+  //   3. The apparent wind must always blow onto her from the WINDWARD side.
+  let leeOK = true, keelOK = true, awOK = true, n = 0, detail = '';
+  for (const windFrom of [0, 90, 200, 315]) {
+    for (const off of [-140, -75, -40, 40, 75, 140]) {   // both tacks, all points of sail
+      const heading = (windFrom + off + 360) % 360;
+      const rel  = wrap180(heading - windFrom);
+      const twa  = Math.abs(rel);
+      const side = -(Math.sign(rel) || 1);
+      const s = steadyState(twa, TWS10, sloop, {});
+      if (s.v < 0.1 * KT) continue;
+      n++;
+
+      const hr = rad(heading);
+      // core boat frame (+x starboard, +y bow) -> screen, mirrored for the tack
+      const toScr = (bx, by) => {
+        const x = bx * side;
+        return { x: x * Math.cos(hr) + by * Math.sin(hr),
+                 y: x * Math.sin(hr) - by * Math.cos(hr) };
+      };
+      const toWind = bvec(windFrom);      // screen vector pointing into the wind's eye
+      const dot = (a, b) => a.x * b.x + a.y * b.y;
+
+      // 1. Reaching or closer, she must slide AWAY from the wind.
+      if (twa <= 100 && Math.abs(s.lambda) > 0.05) {
+        const course = heading + s.lambda * side;
+        if (Math.abs(wrap180(course - windFrom)) <= Math.abs(wrap180(heading - windFrom))) {
+          leeOK = false;
+          detail = `wind ${windFrom}°, heading ${heading}° → she drifts to WINDWARD`;
+        }
+      }
+      // 2. Keel opposes the sail. Always, on every point of sail.
+      if (Math.abs(s.f.Fx) > 1) {
+        const sail = toScr(Math.sign(s.f.Fx), 0);
+        const keel = toScr(-Math.sign(s.f.Fx), 0);
+        if (dot(sail, keel) > -0.9) {
+          keelOK = false;
+          detail = detail || `wind ${windFrom}°, heading ${heading}° → keel does not oppose the sail`;
+        }
+      }
+      // 3. The apparent wind blows onto her FROM the windward side.
+      const awFrom = toScr(-s.f.dhat.x, -s.f.dhat.y);   // toward where it comes from
+      if (twa <= 100 && dot(awFrom, toWind) <= 0) {
+        awOK = false;
+        detail = detail || `wind ${windFrom}°, heading ${heading}° → apparent wind arrives from LEEWARD`;
+      }
+    }
+  }
+  ok('A18 the picture does not lie: leeway to leeward, keel opposing, wind from windward',
+     leeOK && keelOK && awOK,
+     (leeOK && keelOK && awOK)
+       ? n + ' wind/heading combinations on both tacks — all three checked in world coordinates'
+       : detail);
 
   return R;
 }
