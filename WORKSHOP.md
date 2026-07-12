@@ -4,10 +4,30 @@ The pipeline that produces an episode. Six stages. It exists so that a future
 session — human or model — can run the whole thing again without rediscovering
 how.
 
+## The three parties
+
+Every episode is made by three, and the stages below say which is which:
+
+| | Who | Owns |
+|---|---|---|
+| **Human** | Justin Simpson | Stage 1 (commission), every judgment call, and the final look. The eye that catches what the tests do not. |
+| **Model** | Claude Code (Anthropic) | Stages 2 (consolidation), 3 (build), 5 (publish). The judgment-dense half. |
+| **Fleet** | Hermes agents ([Nous Research](https://hermes-agent.nousresearch.com)) | Stage 2 (research verification), Stage 4 (browser QA), Stage 6 (promotion, on request). |
+
 The organising principle is a division of labour:
 
 > **Judgment stays with a strong-model session. Verification, testing and
 > publishing go to the agent fleet. The fleet never originates content.**
+
+And one more, learned the hard way on Episode 1:
+
+> **A human still has to look at the thing.** The first published build passed
+> nineteen checks and was still wrong in three ways, all of them found by a reader
+> simply looking at the picture — including a mirrored tack convention that drew
+> every force vector backwards and had the boat making leeway *to windward*. A
+> harness that only asserts things about the *model* will happily bless a *picture*
+> that is a mirror image of the truth. Budget for the human pass; it is not a
+> formality.
 
 That division is the anti-slop gate. An agent swarm asked to *invent* an
 explorable produces plausible mush; an agent swarm asked to *check* one is a

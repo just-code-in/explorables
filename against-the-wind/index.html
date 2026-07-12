@@ -74,10 +74,26 @@
     color: var(--ink-soft);
   }
 
-  /* ---------- layout ---------- */
-  .stage { display: grid; grid-template-columns: minmax(0, 1fr) 344px; gap: 18px; align-items: start; }
-  @media (max-width: 940px) { .stage { grid-template-columns: minmax(0, 1fr); } }
-  .main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  /* ---------- layout ----------
+     The prose lives INSIDE the grid, in column 1, row 2 — so it begins directly
+     under the chart's own column instead of waiting for the tallest column to
+     finish. The side column spans both rows but is start-aligned, so it simply
+     ends where it ends and stops dictating where the reading starts. */
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 344px;
+    grid-template-rows: auto auto;
+    gap: 18px;
+    align-items: start;
+  }
+  .main  { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .side  { grid-column: 2; grid-row: 1 / span 2; align-self: start; }
+  .prose { grid-column: 1; grid-row: 2; min-width: 0; }
+
+  @media (max-width: 940px) {
+    .stage { grid-template-columns: minmax(0, 1fr); }
+    .main, .side, .prose { grid-column: 1; grid-row: auto; }
+  }
 
   .panel {
     background: var(--paper-warm);
@@ -186,16 +202,22 @@
     color: var(--ink-soft);
   }
 
-  .legend { margin: 2px 0 0; padding: 12px 0 0; border-top: 1px solid var(--rule); }
+  /* A narrow band under the chart, not a tall column beside it — it explains the
+     chart, so it belongs with the chart, and it must not out-run the map. */
+  .legend {
+    margin: 0; padding: 12px;
+    display: grid; gap: 10px 18px;
+    grid-template-columns: repeat(auto-fit, minmax(198px, 1fr));
+  }
+  .legend .lg { min-width: 0; }
   .legend dt {
-    font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase;
     color: var(--ink); display: flex; align-items: center; gap: 7px;
   }
-  .legend dt i { display: inline-block; width: 16px; height: 3px; flex: 0 0 16px; border-radius: 1px; }
+  .legend dt i { display: inline-block; width: 15px; height: 3px; flex: 0 0 15px; border-radius: 1px; }
   .legend dd {
-    margin: 3px 0 11px 23px; font-size: 12.5px; line-height: 1.45; color: var(--ink-soft);
+    margin: 3px 0 0 22px; font-size: 12px; line-height: 1.4; color: var(--ink-soft);
   }
-  .legend dd:last-child { margin-bottom: 2px; }
   .legend em { color: var(--ink); font-style: italic; }
 
   .note {
@@ -222,6 +244,12 @@
     margin-top: 40px; border-top: 1px solid var(--rule); padding-top: 14px;
     font-family: var(--mono); font-size: 11px; color: var(--ink-faint); letter-spacing: .05em;
   }
+  .credits {
+    font-family: var(--serif); font-size: 14px; line-height: 1.6; letter-spacing: 0;
+    color: var(--ink-soft); max-width: 68ch; margin: 0 0 16px;
+  }
+  .credits strong { color: var(--ink); font-weight: 600; }
+  .credits a { color: var(--magenta); border-bottom-color: rgba(168,50,102,.35); }
   footer a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid var(--ink-faint); }
   footer a:hover { color: var(--magenta); }
 
@@ -260,6 +288,40 @@
                 aria-label="Top-down nautical chart showing a boat, the wind, and the forces acting on the sail and keel."></canvas>
         <div class="stateTag" id="stateTag">Sailing</div>
         <div class="hint">Drag the <b>wind arrow</b> to change wind &nbsp;·&nbsp; drag the <b>ring</b> to steer</div>
+      </div>
+
+      <div class="panel">
+        <div class="head">The arrows on the chart</div>
+        <dl class="legend" id="legend">
+          <div class="lg">
+            <dt><i style="background:var(--course)"></i>Course</dt>
+            <dd>Where she is <em>actually</em> going — heading plus the leeway she is sliding.</dd>
+          </div>
+          <div class="lg">
+            <dt><i style="background:var(--wind)"></i>Apparent wind</dt>
+            <dd>The wind the sail <em>feels</em>: true wind minus the boat's own motion.</dd>
+          </div>
+          <div class="lg">
+            <dt><i style="background:var(--magenta)"></i>Sail lift</dt>
+            <dd>Perpendicular to the apparent wind. The big one — and it points mostly sideways.</dd>
+          </div>
+          <div class="lg">
+            <dt><i style="background:var(--drag)"></i>Sail drag</dt>
+            <dd>Along the apparent wind. Includes the windage of mast and rigging.</dd>
+          </div>
+          <div class="lg">
+            <dt><i style="background:var(--keel)"></i>Keel side force</dt>
+            <dd>The keel biting the water, cancelling nearly all of that sideways push.</dd>
+          </div>
+          <div class="lg">
+            <dt><i style="background:var(--thrust)"></i>Driving force</dt>
+            <dd>What survives the cancellation, along the hull: the forward pull.</dd>
+          </div>
+          <div class="lg">
+            <dt><i style="background:var(--resist)"></i>Hull resistance</dt>
+            <dd>What holds her back. Matching the driving force is what a steady speed <em>is</em>.</dd>
+          </div>
+        </dl>
       </div>
 
       <div class="panel">
@@ -331,29 +393,6 @@
             <span>Show force vectors</span>
           </label>
 
-          <dl class="legend" id="legend">
-            <dt><i style="background:var(--course)"></i>Course</dt>
-            <dd>Where she is <em>actually</em> going — her heading plus the leeway she is sliding. Always shown.</dd>
-
-            <dt><i style="background:var(--wind)"></i>Apparent wind</dt>
-            <dd>The wind the sail <em>feels</em>: the true wind minus the boat's own motion. It swings forward as she speeds up.</dd>
-
-            <dt><i style="background:var(--magenta)"></i>Sail lift</dt>
-            <dd>Perpendicular to the apparent wind. The big one — and it points mostly sideways.</dd>
-
-            <dt><i style="background:var(--drag)"></i>Sail drag</dt>
-            <dd>Along the apparent wind, straight downwind. Includes the windage of mast and rigging.</dd>
-
-            <dt><i style="background:var(--keel)"></i>Keel side force</dt>
-            <dd>The keel, biting the water, cancelling nearly all of that sideways push.</dd>
-
-            <dt><i style="background:var(--thrust)"></i>Driving force</dt>
-            <dd>What survives the cancellation, pointing along the hull: the forward pull.</dd>
-
-            <dt><i style="background:var(--resist)"></i>Hull resistance</dt>
-            <dd>What holds her back. When it matches the driving force she stops accelerating — that is what a steady speed <em>is</em>.</dd>
-          </dl>
-
           <button class="btn" id="trace">Trace full polar</button>
           <button class="btn ghost" id="reset">Reset</button>
 
@@ -361,13 +400,6 @@
       </div>
 
     </div>
-  </div>
-
-  <div class="panel" id="selftest">
-    <div class="head">Self-test — the accuracy anchors, as runnable assertions</div>
-    <table id="stBody"></table>
-    <div class="stTotal" id="stTotal"></div>
-  </div>
 
   <div class="prose">
 
@@ -382,7 +414,7 @@
       cancel almost all of that sideways push.
     </p>
     <p>
-      What survives the cancellation is a small forward component: <span style="color:var(--thrust)">net thrust</span>.
+      What survives the cancellation is a small forward component: the <span style="color:var(--thrust)">driving force</span>.
       Turn on the vectors and you can watch it happen. The boat is squeezed forward between two wings pushing
       in nearly opposite directions — like a wet watermelon seed pinched between finger and thumb.
     </p>
@@ -477,8 +509,21 @@
     </p>
 
   </div>
+  </div><!-- /.stage -->
+
+  <div class="panel" id="selftest">
+    <div class="head">Self-test — the accuracy anchors, as runnable assertions</div>
+    <table id="stBody"></table>
+    <div class="stTotal" id="stTotal"></div>
+  </div>
 
   <footer>
+    <p class="credits">
+      Built by <strong>Justin Simpson</strong> with <strong>Claude Code</strong> (Anthropic) and a fleet of
+      <strong>Hermes agents</strong> (Nous Research), which verified every source in Stage&nbsp;2 and drove the
+      browser QA in Stage&nbsp;4. Three parties, and the
+      <a href="https://github.com/just-code-in/explorables/blob/main/WORKSHOP.md">Workshop</a> says which did what.
+    </p>
     Explorables · Episode 1 &nbsp;·&nbsp;
     <a href="https://github.com/just-code-in/explorables/blob/main/against-the-wind/FACTSHEET.md">Fact sheet &amp; sources</a> &nbsp;·&nbsp;
     <a href="?selftest=1">Run the self-test</a> &nbsp;·&nbsp;
@@ -950,7 +995,7 @@ let PL = { w: 320, h: 320 };
 
 function relayout() {
   const narrow = window.innerWidth < 940;
-  CH = fitCanvas(chart, cx, narrow ? 1.0 : 0.78);
+  CH = fitCanvas(chart, cx, narrow ? 1.0 : 0.70);
   PL = fitCanvas(polarC, px, 1);
   buildPaper();
 }
