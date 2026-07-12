@@ -127,10 +127,24 @@ reusable asset here is the *checklist*, not the runner.
 
 ## Stage 5 — Publish
 
-**Who:** the build session.
+**Who:** the build session. **The announcement: a human.**
 
 Push to `just-code-in/explorables`. Pages deploys from `main`. Add the episode's
-card to the gallery index. Announce once in Slack `#olympus`.
+card to the gallery index.
+
+Then **draft** the `#olympus` announcement and **stop**. Do not send it.
+
+This is not ceremony, and Episode 1 is the reason. The announcement went out the
+moment the build was QA-clean — and then a human looked at the page and found
+three real defects that nineteen passing assertions had blessed, one of which drew
+every force vector on the chart as a mirror image. The post was already public,
+already describing a build that no longer existed, and there is no clean way to
+withdraw a Slack message that people have read.
+
+A brief written *before* the work cannot approve a message whose content is only
+known *after* it. So: **"announce it" means "prepare the announcement for
+approval."** Publishing to a static site is reversible in a commit. Telling people
+is not.
 
 ## Stage 6 — Promote
 
@@ -150,5 +164,6 @@ Manim teaser of the sim. A human decides whether either goes out.
 - [ ] Single file, zero dependencies, zero build step (Stage 3)
 - [ ] Simplifications declared *in the page itself* (Stage 3)
 - [ ] Selftest green, console clean, three viewports, every control, degeneracies (Stage 4)
-- [ ] Gallery index updated; announced once in `#olympus` (Stage 5)
+- [ ] Gallery index updated (Stage 5)
+- [ ] `#olympus` announcement **drafted and approved by a human** before sending (Stage 5)
 - [ ] Promotion left alone unless a human asks (Stage 6)
