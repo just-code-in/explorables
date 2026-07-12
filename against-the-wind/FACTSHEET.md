@@ -3,8 +3,9 @@
 Every number in the simulation, and where it came from.
 
 Compiled 2026-07-11 in **Stage 2** of the [Workshop](../WORKSHOP.md): five research
-cards, run in parallel by five agent profiles of a Hermes fleet, each working a
-separate body of literature under one standing instruction —
+cards, run in parallel by five agent profiles of a
+[**Hermes**](https://github.com/NousResearch/hermes-agent) fleet (Nous Research),
+each working a separate body of literature under one standing instruction —
 
 > **If you cannot source a number, write `UNVERIFIED`. An honest gap is far more
 > useful than a plausible invention.**

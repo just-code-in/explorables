@@ -34,9 +34,12 @@ A three-way collaboration, and all three parties do load-bearing work:
   passing test had noticed. The most serious had every force vector on the chart
   drawn as a mirror image.
 - **Claude Code** (Anthropic) — design and build; the judgment-dense half.
-- **A fleet of Hermes agents** ([Nous Research](https://hermes-agent.nousresearch.com))
-  — Stage 2 research verification and Stage 4 browser QA. The fleet checks, tests
-  and publishes. It never originates content: that division is the anti-slop gate.
+- **A fleet of [Hermes agents](https://github.com/NousResearch/hermes-agent)**
+  (Nous Research) — Stage 2 research verification and Stage 4 browser QA. The
+  fleet checks, tests and publishes. It never originates content: that division
+  is the anti-slop gate. Source:
+  <https://github.com/NousResearch/hermes-agent> · docs:
+  <https://hermes-agent.nousresearch.com>
 
 [WORKSHOP.md](WORKSHOP.md) says which stage belongs to whom.
 

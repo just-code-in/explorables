@@ -12,7 +12,12 @@ Every episode is made by three, and the stages below say which is which:
 |---|---|---|
 | **Human** | Justin Simpson | Stage 1 (commission), every judgment call, and the final look. The eye that catches what the tests do not. |
 | **Model** | Claude Code (Anthropic) | Stages 2 (consolidation), 3 (build), 5 (publish). The judgment-dense half. |
-| **Fleet** | Hermes agents ([Nous Research](https://hermes-agent.nousresearch.com)) | Stage 2 (research verification), Stage 4 (browser QA), Stage 6 (promotion, on request). |
+| **Fleet** | [Hermes agents](https://github.com/NousResearch/hermes-agent) (Nous Research) | Stage 2 (research verification), Stage 4 (browser QA), Stage 6 (promotion, on request). |
+
+The fleet is [**NousResearch/hermes-agent**](https://github.com/NousResearch/hermes-agent)
+— six agent profiles, each with its own model, toolset and persona, sharing a
+Kanban board. Stages 2 and 4 below are worked cards on that board, and they are
+reproducible: the card bodies are quoted in the episode's `FACTSHEET.md`.
 
 The organising principle is a division of labour:
 
