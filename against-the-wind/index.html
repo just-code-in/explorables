@@ -1199,22 +1199,21 @@ function boatPath(ctx, rig, L, B) {
   ctx.closePath();
 }
 
-/* Plan of a frigate, in the same ink as the chart. Negative y is the bow.
-   A fair hull — round entrance, beam forward of amidships, long run to a
-   round stern — with the deck edge drawn inside it. */
+/* Plan of a frigate. Negative y is the bow, the same end the sloop's bow
+   points, and the end the heading ring sits on. The bow is the sharp end:
+   it tapers into the bowsprit. The stern is the round end. */
 function shipHull(ctx, L, half, inset) {
   const h = Math.max(2.5, half - inset);
-  const bow = -L * 0.46 + inset * 0.35;
-  const stern = L * 0.42 - inset * 0.12;
+  const bow = -L * 0.48 + inset * 0.15;
+  const stern = L * 0.40 - inset * 0.04;
   ctx.beginPath();
-  // Round entrance, beam carried forward, long run, round stern.
   ctx.moveTo(0, bow);
-  ctx.bezierCurveTo(h * 0.72, bow - L * 0.005, h * 1.05, bow + L * 0.06, h, -L * 0.08);
-  ctx.bezierCurveTo(h, L * 0.08, h * 0.86, L * 0.22, h * 0.52, L * 0.34);
-  ctx.bezierCurveTo(h * 0.28, stern - L * 0.02, h * 0.10, stern, 0, stern);
-  ctx.bezierCurveTo(-h * 0.10, stern, -h * 0.28, stern - L * 0.02, -h * 0.52, L * 0.34);
-  ctx.bezierCurveTo(-h * 0.86, L * 0.22, -h, L * 0.08, -h, -L * 0.08);
-  ctx.bezierCurveTo(-h * 1.05, bow + L * 0.06, -h * 0.72, bow - L * 0.005, 0, bow);
+  ctx.bezierCurveTo(h * 0.12, bow + L * 0.01, h * 0.48, bow + L * 0.12, h * 0.90, -L * 0.04);
+  ctx.bezierCurveTo(h * 1.02, L * 0.08, h * 0.98, L * 0.20, h * 0.70, L * 0.31);
+  ctx.bezierCurveTo(h * 0.40, stern - L * 0.015, h * 0.14, stern + L * 0.004, 0, stern);
+  ctx.bezierCurveTo(-h * 0.14, stern + L * 0.004, -h * 0.40, stern - L * 0.015, -h * 0.70, L * 0.31);
+  ctx.bezierCurveTo(-h * 0.98, L * 0.20, -h * 1.02, L * 0.08, -h * 0.90, -L * 0.04);
+  ctx.bezierCurveTo(-h * 0.48, bow + L * 0.12, -h * 0.12, bow + L * 0.01, 0, bow);
   ctx.closePath();
 }
 
