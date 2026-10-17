@@ -1199,29 +1199,22 @@ function boatPath(ctx, rig, L, B) {
   ctx.closePath();
 }
 
-/* Plan of a c.1800 frigate, not a yacht: the bow leaves the stem broadly,
-   the beam is carried forward, and a long run ends in a narrow square tuck
-   with quarter galleries. Negative y is the bow. */
-function shipPath(ctx, L, B) {
-  const half = B * 0.62;
-  const bow = -L * 0.50;
-  const stern = L * 0.46;
+/* Plan of a frigate, in the same ink as the chart. Negative y is the bow.
+   A fair hull — round entrance, beam forward of amidships, long run to a
+   round stern — with the deck edge drawn inside it. */
+function shipHull(ctx, L, half, inset) {
+  const h = Math.max(2.5, half - inset);
+  const bow = -L * 0.46 + inset * 0.35;
+  const stern = L * 0.42 - inset * 0.12;
   ctx.beginPath();
+  // Round entrance, beam carried forward, long run, round stern.
   ctx.moveTo(0, bow);
-  // Bluff bow: the tangent leaves the stem almost abeam, and the beam is
-  // carried forward. Aft, the run narrows into a square tuck, and the
-  // quarter galleries step out as corners rather than a fair curve.
-  ctx.bezierCurveTo(half * 1.05, bow + L * 0.02, half * 1.05, -L * 0.16, half, L * 0.04);
-  ctx.bezierCurveTo(half * 0.92, L * 0.18, half * 0.55, L * 0.30, half * 0.40, L * 0.37);
-  ctx.lineTo(half * 0.82, L * 0.37);
-  ctx.lineTo(half * 0.82, L * 0.43);
-  ctx.lineTo(half * 0.40, stern);
-  ctx.lineTo(-half * 0.40, stern);
-  ctx.lineTo(-half * 0.82, L * 0.43);
-  ctx.lineTo(-half * 0.82, L * 0.37);
-  ctx.lineTo(-half * 0.40, L * 0.37);
-  ctx.bezierCurveTo(-half * 0.55, L * 0.30, -half * 0.92, L * 0.18, -half, L * 0.04);
-  ctx.bezierCurveTo(-half * 1.05, -L * 0.16, -half * 1.05, bow + L * 0.02, 0, bow);
+  ctx.bezierCurveTo(h * 0.72, bow - L * 0.005, h * 1.05, bow + L * 0.06, h, -L * 0.08);
+  ctx.bezierCurveTo(h, L * 0.08, h * 0.86, L * 0.22, h * 0.52, L * 0.34);
+  ctx.bezierCurveTo(h * 0.28, stern - L * 0.02, h * 0.10, stern, 0, stern);
+  ctx.bezierCurveTo(-h * 0.10, stern, -h * 0.28, stern - L * 0.02, -h * 0.52, L * 0.34);
+  ctx.bezierCurveTo(-h * 0.86, L * 0.22, -h, L * 0.08, -h, -L * 0.08);
+  ctx.bezierCurveTo(-h * 1.05, bow + L * 0.06, -h * 0.72, bow - L * 0.005, 0, bow);
   ctx.closePath();
 }
 
@@ -1282,74 +1275,82 @@ function drawSloop(ctx, L, B, delta, side, luffing, stalled) {
 }
 
 function drawSquare(ctx, L, B, delta, side, luffing, stalled) {
-  const half = B * 0.62;
-  const bow = -L * 0.50;
+  // Opened a little past the true beam/length so the plan still reads
+  // at the size of the chart. The model itself is unchanged.
+  const half = Math.max(B * 0.62, L * 0.155);
+  const bow = -L * 0.47;
+  const ink = 'rgba(27,48,64,.78)';
+  const fine = 'rgba(27,48,64,.42)';
 
-  shipPath(ctx, L, B);
+  shipHull(ctx, L, half, 0);
   ctx.fillStyle = 'rgba(244,238,222,.92)';
   ctx.fill();
   ctx.strokeStyle = C.ink;
-  ctx.lineWidth = 1.6;
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // beakhead bulkhead, centreline, and the square transom
-  ctx.beginPath();
-  ctx.moveTo(-half * 0.42, bow + L * 0.10);
-  ctx.lineTo( half * 0.42, bow + L * 0.10);
-  ctx.moveTo(0, bow + L * 0.10);
-  ctx.lineTo(0, L * 0.42);
-  ctx.moveTo(-half * 0.44, L * 0.46);
-  ctx.lineTo( half * 0.44, L * 0.46);
-  ctx.strokeStyle = 'rgba(27,48,64,.28)';
-  ctx.lineWidth = 1;
+  // deck edge, inside the hull
+  shipHull(ctx, L, half, half * 0.22);
+  ctx.strokeStyle = fine;
+  ctx.lineWidth = 0.8;
   ctx.stroke();
 
-  // bowsprit, spritsail yard, and the two catheads
-  const sprit = bow - L * 0.24;
+  // hatches along the centreline
+  ctx.strokeStyle = fine;
+  ctx.lineWidth = 0.7;
+  for (const hy of [-L * 0.16, L * 0.02, L * 0.16]) {
+    ctx.strokeRect(-half * 0.16, hy - L * 0.018, half * 0.32, L * 0.036);
+  }
+
+  // bowsprit, jibboom and the head stays. The triangle forward of the stem
+  // is what makes the plan read as a ship rather than a hull with a stick.
+  const tip = bow - L * 0.50;
   ctx.beginPath();
   ctx.moveTo(0, bow + L * 0.02);
-  ctx.lineTo(0, sprit);
-  ctx.moveTo(-half * 0.70, sprit + L * 0.045);
-  ctx.lineTo( half * 0.70, sprit + L * 0.045);
-  ctx.moveTo(-half * 0.22, bow + L * 0.08);
-  ctx.lineTo(-half * 0.85, bow - L * 0.02);
-  ctx.moveTo( half * 0.22, bow + L * 0.08);
-  ctx.lineTo( half * 0.85, bow - L * 0.02);
-  ctx.strokeStyle = C.ink;
-  ctx.lineWidth = 1.6;
+  ctx.lineTo(0, tip);
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 1.25;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-half * 0.55, bow + L * 0.045);
+  ctx.lineTo(0, tip);
+  ctx.moveTo( half * 0.55, bow + L * 0.045);
+  ctx.lineTo(0, tip);
+  ctx.strokeStyle = fine;
+  ctx.lineWidth = 0.8;
   ctx.stroke();
 
   const wob = luffing ? Math.sin(S.flutter * 9) * rad(5) : 0;
   const th = rad(delta) * side + wob;
-  const masts = [-L * 0.26, L * 0.02, L * 0.28];   // fore, main, mizzen
-  const yardL = [B * 1.30, B * 1.42, B * 1.10];
+  // Two yards a mast: course, then a shorter topsail a step aft of it.
+  // Lengths are a fraction of the ship, so they stand out past the hull
+  // without crossing into a scribble.
+  const masts = [
+    { y: -L * 0.16, yards: [L * 0.64, L * 0.44] },
+    { y:  L * 0.04, yards: [L * 0.76, L * 0.52] },
+    { y:  L * 0.22, yards: [L * 0.44, L * 0.28] },
+  ];
+  const ux = Math.sin(th + Math.PI / 2), uy = -Math.cos(th + Math.PI / 2);
+  ctx.lineCap = 'round';
 
-  masts.forEach((my2, i) => {
-    const half = yardL[i] / 2;
-    // The yard — and therefore the sail's chord — lies at `delta` off the centreline.
-    const ux = Math.sin(th + Math.PI / 2), uy = -Math.cos(th + Math.PI / 2);
-    const ax = my2 * 0 + ux * half,  ay = my2 + uy * half;
-    const bx = -ux * half,           by = my2 - uy * half;
+  masts.forEach(m => {
+    m.yards.forEach((len, k) => {
+      const along = k * L * 0.026;
+      const hlen = len / 2;
+      const ax = ux * hlen, ay = m.y + along + uy * hlen;
+      const bx = -ux * hlen, by = m.y + along - uy * hlen;
+      const course = k === 0;
 
-    // sail: shallow arc bellying downwind of the yard
-    const camber = B * 0.20 * (luffing ? 0.2 : 1);
-    const nx = -Math.sin(th) * side, ny = Math.cos(th) * side;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.strokeStyle = stalled && course ? C.magenta : C.ink;
+      ctx.lineWidth = course ? 1.7 : 1.15;
+      ctx.stroke();
+    });
+
     ctx.beginPath();
-    ctx.moveTo(ax, ay);
-    ctx.quadraticCurveTo((ax + bx) / 2 - nx * camber, (ay + by) / 2 - ny * camber, bx, by);
-    ctx.strokeStyle = stalled ? C.magenta : 'rgba(27,48,64,.55)';
-    ctx.lineWidth = 3.2;
-    ctx.stroke();
-
-    // the yard itself
-    ctx.beginPath();
-    ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
-    ctx.strokeStyle = C.ink;
-    ctx.lineWidth = 1.4;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(0, my2, 2.4, 0, 7);
+    ctx.arc(0, m.y, 2.1, 0, 7);
     ctx.fillStyle = C.ink;
     ctx.fill();
   });
