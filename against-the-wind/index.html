@@ -1199,6 +1199,32 @@ function boatPath(ctx, rig, L, B) {
   ctx.closePath();
 }
 
+/* Plan of a c.1800 frigate, not a yacht: the bow leaves the stem broadly,
+   the beam is carried forward, and a long run ends in a narrow square tuck
+   with quarter galleries. Negative y is the bow. */
+function shipPath(ctx, L, B) {
+  const half = B * 0.62;
+  const bow = -L * 0.50;
+  const stern = L * 0.46;
+  ctx.beginPath();
+  ctx.moveTo(0, bow);
+  // Bluff bow: the tangent leaves the stem almost abeam, and the beam is
+  // carried forward. Aft, the run narrows into a square tuck, and the
+  // quarter galleries step out as corners rather than a fair curve.
+  ctx.bezierCurveTo(half * 1.05, bow + L * 0.02, half * 1.05, -L * 0.16, half, L * 0.04);
+  ctx.bezierCurveTo(half * 0.92, L * 0.18, half * 0.55, L * 0.30, half * 0.40, L * 0.37);
+  ctx.lineTo(half * 0.82, L * 0.37);
+  ctx.lineTo(half * 0.82, L * 0.43);
+  ctx.lineTo(half * 0.40, stern);
+  ctx.lineTo(-half * 0.40, stern);
+  ctx.lineTo(-half * 0.82, L * 0.43);
+  ctx.lineTo(-half * 0.82, L * 0.37);
+  ctx.lineTo(-half * 0.40, L * 0.37);
+  ctx.bezierCurveTo(-half * 0.55, L * 0.30, -half * 0.92, L * 0.18, -half, L * 0.04);
+  ctx.bezierCurveTo(-half * 1.05, -L * 0.16, -half * 1.05, bow + L * 0.02, 0, bow);
+  ctx.closePath();
+}
+
 function drawSloop(ctx, L, B, delta, side, luffing, stalled) {
   // hull
   boatPath(ctx, S.rig, L, B);
@@ -1256,17 +1282,41 @@ function drawSloop(ctx, L, B, delta, side, luffing, stalled) {
 }
 
 function drawSquare(ctx, L, B, delta, side, luffing, stalled) {
-  boatPath(ctx, S.rig, L, B);
+  const half = B * 0.62;
+  const bow = -L * 0.50;
+
+  shipPath(ctx, L, B);
   ctx.fillStyle = 'rgba(244,238,222,.92)';
   ctx.fill();
   ctx.strokeStyle = C.ink;
   ctx.lineWidth = 1.6;
   ctx.stroke();
 
+  // beakhead bulkhead, centreline, and the square transom
   ctx.beginPath();
-  ctx.moveTo(0, -L * 0.44); ctx.lineTo(0, L * 0.4);
-  ctx.strokeStyle = 'rgba(27,48,64,.22)';
+  ctx.moveTo(-half * 0.42, bow + L * 0.10);
+  ctx.lineTo( half * 0.42, bow + L * 0.10);
+  ctx.moveTo(0, bow + L * 0.10);
+  ctx.lineTo(0, L * 0.42);
+  ctx.moveTo(-half * 0.44, L * 0.46);
+  ctx.lineTo( half * 0.44, L * 0.46);
+  ctx.strokeStyle = 'rgba(27,48,64,.28)';
   ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // bowsprit, spritsail yard, and the two catheads
+  const sprit = bow - L * 0.24;
+  ctx.beginPath();
+  ctx.moveTo(0, bow + L * 0.02);
+  ctx.lineTo(0, sprit);
+  ctx.moveTo(-half * 0.70, sprit + L * 0.045);
+  ctx.lineTo( half * 0.70, sprit + L * 0.045);
+  ctx.moveTo(-half * 0.22, bow + L * 0.08);
+  ctx.lineTo(-half * 0.85, bow - L * 0.02);
+  ctx.moveTo( half * 0.22, bow + L * 0.08);
+  ctx.lineTo( half * 0.85, bow - L * 0.02);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.6;
   ctx.stroke();
 
   const wob = luffing ? Math.sin(S.flutter * 9) * rad(5) : 0;
