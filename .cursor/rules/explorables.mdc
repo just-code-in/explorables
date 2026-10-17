@@ -1,0 +1,60 @@
+---
+description: How episodes in this repo are researched, built, and QA'd
+alwaysApply: true
+---
+
+# Explorables
+
+An episode is one self-contained HTML file: vanilla JS, a canvas, inline CSS. No dependencies, no CDN, no build step. It must load on a phone, work offline, and still run years from now.
+
+Open the file directly, or serve the repo root (`python3 -m http.server`). Append `?selftest=1` to run the physics assertions and print them to the console.
+
+## Layout
+
+- `index.html` at the repo root is the gallery. Add the episode's card there when it ships.
+- Each episode is a kebab-case directory (`against-the-wind/`) containing:
+  - `index.html` — the episode
+  - `FACTSHEET.md` — ground truth for every number
+  - `qa/qa.mjs` — Playwright harness
+  - `qa/README.md` — the recorded clean pass
+  - `qa/*.png` — screenshots from that pass
+
+## Physics
+
+`FACTSHEET.md` is ground truth. The builder does not renegotiate it.
+
+- Every constant is **measured** (cited), **fitted** (chosen to reproduce a sourced anchor), or **`UNVERIFIED`**. An unsourced number is marked `UNVERIFIED`. Do not invent one.
+- Interesting results emerge from the force balance. Do not hard-code the headline outcome (Episode 1 is not told "six points"; Steel's 40° bracing limit produces it).
+- Encode the fact sheet's anchors as runnable assertions in the page. Expose `window.__SELFTEST__` (`{ pass, total, results }`) and `window.__SIM__` so `qa/qa.mjs` can drive the same physics the animation uses.
+- State simplifications in the page itself (Episode 1: no heel, no waves, quasi-static forces, one aggregate sail).
+
+## Build order
+
+Write the selftest first, from the fact sheet. Watch it fail, then write the physics until it passes. The anchors are the specification of correct.
+
+## QA
+
+Selftest green before anything else. Then, at every viewport, through every interaction:
+
+1. Console: zero errors.
+2. Viewports: phone **390×844**, tablet **768×1024**, desktop **1440×950**. No horizontal overflow, nothing clipped or overlapping. Drag targets ≥44px (`button` and `input[type=range]` are 44px tall; the harness flags controls under 24px).
+3. Every control: drag the wind, steer through the no-go zone and confirm in irons, toggle the rig and confirm the zone changes, trace the polar, turn off auto-trim and stall deliberately.
+4. Degeneracies: zero wind, parameters changed mid-sweep, heading spun rapidly. Nothing may NaN or freeze. In irons takes a long time — wait for the boat to lose way.
+5. Assert the **picture**, in world coordinates, on both tacks. A model-only harness will bless a mirrored drawing.
+
+Commit the clean pass: `qa/README.md` plus screenshots named `{phone|tablet|desktop}-{state}.png` (Episode 1: `phone-sloop`, `phone-square-traced`, `tablet-sloop`, `desktop-sloop`, `desktop-square-traced`, `desktop-running-downwind`). Run `node qa/qa.mjs --shots` against a local server. If Playwright cannot run, execute the same checklist and record it.
+
+## Workshop
+
+Six stages. Do not skip or reorder them. Judgment stays in the strong-model session. The Hermes fleet verifies, tests, and publishes. It never originates content.
+
+| Stage | Who | Output |
+|---|---|---|
+| 1 Commission | Human + strong model. Never delegated. | Design spec: experience, model, anchors, layout, simplifications, non-goals. The contract. |
+| 2 Research | Fleet verifies claim clusters in parallel; strong model consolidates. | `FACTSHEET.md`. Worker summaries are the deliverable. Card briefs specify units and what a good answer looks like. |
+| 3 Build | Strong model | `index.html`, selftest green |
+| 4 QA | Browser agent, looped with Stage 3 | Recorded clean pass in `qa/` |
+| 5 Publish | Build session pushes; a human sends the announcement | Gallery card on `main` (Pages deploys from `main`). Draft the `#olympus` post and stop. |
+| 6 Promote | Fleet, only after a human asks | Social draft and teaser. Never automatic. |
+
+A human still looks at the picture after a green selftest. Publishing the page is reversible. Sending the announcement is not: "announce it" means prepare the text for approval.
