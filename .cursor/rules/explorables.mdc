@@ -1,5 +1,5 @@
 ---
-description: How episodes in this repo are researched, built, and QA'd
+description: How an explorable episode is built — single file, fact sheet, selftest, QA
 alwaysApply: true
 ---
 
@@ -16,7 +16,7 @@ Open the file directly, or serve the repo root (`python3 -m http.server`). Appen
   - `index.html` — the episode
   - `FACTSHEET.md` — ground truth for every number
   - `qa/qa.mjs` — Playwright harness
-  - `qa/README.md` — the recorded clean pass
+  - `qa/README.md` — the recorded clean pass, and that episode's checks
   - `qa/*.png` — screenshots from that pass
 
 ## Physics
@@ -38,23 +38,13 @@ Selftest green before anything else. Then, at every viewport, through every inte
 
 1. Console: zero errors.
 2. Viewports: phone **390×844**, tablet **768×1024**, desktop **1440×950**. No horizontal overflow, nothing clipped or overlapping. Drag targets ≥44px (`button` and `input[type=range]` are 44px tall; the harness flags controls under 24px).
-3. Every control: drag the wind, steer through the no-go zone and confirm in irons, toggle the rig and confirm the zone changes, trace the polar, turn off auto-trim and stall deliberately.
-4. Degeneracies: zero wind, parameters changed mid-sweep, heading spun rapidly. Nothing may NaN or freeze. In irons takes a long time — wait for the boat to lose way.
-5. Assert the **picture**, in world coordinates, on both tacks. A model-only harness will bless a mirrored drawing.
+3. Exercise every control, including the episode-specific checks listed in its `qa/README.md`.
+4. Degeneracies listed in that same `qa/README.md`. Nothing may NaN or freeze.
+5. Assert the picture in world coordinates, not only the model. A model-only harness will bless a mirrored drawing.
 
 Commit the clean pass: `qa/README.md` plus screenshots named `{phone|tablet|desktop}-{state}.png` (Episode 1: `phone-sloop`, `phone-square-traced`, `tablet-sloop`, `desktop-sloop`, `desktop-square-traced`, `desktop-running-downwind`). Run `node qa/qa.mjs --shots` against a local server. If Playwright cannot run, execute the same checklist and record it.
 
-## Workshop
+## Stops
 
-Six stages. Do not skip or reorder them. Judgment stays in the strong-model session. The Hermes fleet verifies, tests, and publishes. It never originates content.
-
-| Stage | Who | Output |
-|---|---|---|
-| 1 Commission | Human + strong model. Never delegated. | Design spec: experience, model, anchors, layout, simplifications, non-goals. The contract. |
-| 2 Research | Fleet verifies claim clusters in parallel; strong model consolidates. | `FACTSHEET.md`. Worker summaries are the deliverable. Card briefs specify units and what a good answer looks like. |
-| 3 Build | Strong model | `index.html`, selftest green |
-| 4 QA | Browser agent, looped with Stage 3 | Recorded clean pass in `qa/` |
-| 5 Publish | Build session pushes; a human sends the announcement | Gallery card on `main` (Pages deploys from `main`). Draft the `#olympus` post and stop. |
-| 6 Promote | Fleet, only after a human asks | Social draft and teaser. Never automatic. |
-
-A human still looks at the picture after a green selftest. Publishing the page is reversible. Sending the announcement is not: "announce it" means prepare the text for approval.
+- Never push to `main` or edit a `FACTSHEET.md` without asking.
+- Cursor cloud agents follow the same rules: they never originate content, and they stop at a draft for anything announced.

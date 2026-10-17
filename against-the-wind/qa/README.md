@@ -3,6 +3,20 @@
 Run: `node qa.mjs --shots` (needs Playwright; serve the repo root first, e.g.
 `python3 -m http.server 8777`).
 
+## Episode-specific checks
+
+The shared QA rule says to exercise every control, including this list:
+
+- Drag the wind.
+- Steer through the no-go zone and confirm in irons. A boat carries her way; wait until she has actually stopped.
+- Toggle the rig and confirm the no-go zone visibly widens.
+- Trace the polar.
+- Turn off auto-trim and stall the sail deliberately.
+
+Degeneracies: zero wind, heading spun rapidly, wind slammed between extremes, parameters changed mid-sweep. Nothing may NaN.
+
+Assert the picture in world coordinates, on both tacks.
+
 ## Last recorded pass — 2026-07-11
 
 | Check | Result |
