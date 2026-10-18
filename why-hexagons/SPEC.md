@@ -1,8 +1,6 @@
 # Why Hexagons? — design spec
 
-Stage 1 draft. The contract for the episode. Nothing downstream exists yet: no fact sheet, no page, no gallery card.
-
-A human has to approve this before Stage 2. Until then the claims below are claims, not numbers a builder may hard-code.
+Approved by Justin Simpson on 2026-10-18. This is the contract. The fact sheet and the page may not renegotiate it.
 
 The gallery line this has to honour:
 

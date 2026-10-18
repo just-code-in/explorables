@@ -1,0 +1,1990 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Why Hexagons? — a foam finds 120°</title>
+<meta name="description" content="A two-dimensional dry foam relaxes under equal line tension until the junctions sit at 120 degrees. The angle is not given to the simulation.">
+<style>
+  :root {
+    --paper: #efe7d5; --paper-warm: #e8dfc9; --paper-deep: #ded3b8;
+    --ink: #1b3040; --ink-soft: #5b7186; --ink-faint: #9dabb6; --rule: #c3b696;
+    --magenta: #a83266;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font-family: var(--serif); }
+  body {
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,.5), transparent 60%),
+      radial-gradient(circle at 85% 80%, rgba(190,175,140,.22), transparent 55%);
+  }
+  .wrap { max-width: 1360px; margin: 0 auto; padding: 22px 18px 60px; }
+  header { border-bottom: 1px solid var(--rule); padding-bottom: 14px; margin-bottom: 18px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 0 0 6px;
+  }
+  .eyebrow a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--ink-faint); }
+  .eyebrow a:hover { color: var(--magenta); border-color: var(--magenta); }
+  h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 400; letter-spacing: .01em; margin: 0 0 8px; }
+  .standfirst { margin: 0; max-width: 62ch; font-size: clamp(15px, 2.1vw, 17px); line-height: 1.5; color: var(--ink-soft); }
+  .stage {
+    display: grid; grid-template-columns: minmax(0, 1fr) 344px; grid-template-rows: auto auto;
+    gap: 18px; align-items: start;
+  }
+  .main { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .side { grid-column: 2; grid-row: 1 / span 2; align-self: start; display: flex; flex-direction: column; gap: 14px; }
+  .prose { grid-column: 1; grid-row: 2; min-width: 0; }
+  @media (max-width: 940px) {
+    .stage { grid-template-columns: minmax(0, 1fr); }
+    .main, .side, .prose { grid-column: 1; grid-row: auto; }
+  }
+  .panel {
+    background: var(--paper-warm); border: 1px solid var(--rule); border-radius: 2px;
+    box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 2px 10px rgba(40,30,10,.06);
+  }
+  #chartWrap { position: relative; overflow: hidden; }
+  #chart { display: block; width: 100%; height: auto; touch-action: none; cursor: grab; }
+  #chart.grabbing { cursor: grabbing; }
+  .stateTag {
+    position: absolute; left: 12px; top: 12px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    padding: 5px 9px; border: 1px solid var(--rule); background: rgba(239,231,213,.9);
+    color: var(--ink-soft); border-radius: 2px; pointer-events: none;
+  }
+  .stateTag[data-alarm="1"] { color: #fff; background: var(--magenta); border-color: var(--magenta); }
+  .hint {
+    position: absolute; right: 12px; bottom: 12px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
+    color: var(--ink-soft); background: rgba(239,231,213,.85);
+    border: 1px solid var(--rule); padding: 5px 8px; border-radius: 2px;
+    pointer-events: none; max-width: 58%; text-align: right; line-height: 1.5;
+  }
+  @media (max-width: 560px) { .hint { display: none; } }
+  .panel .head {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--ink-soft); padding: 10px 12px; border-bottom: 1px solid var(--rule);
+  }
+  .panel .body { padding: 12px; }
+  .readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--rule); }
+  .ro { background: var(--paper-warm); padding: 9px 11px; }
+  .ro .k {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-soft); display: block; margin-bottom: 3px;
+  }
+  .ro .v { font-family: var(--mono); font-size: 16px; font-variant-numeric: tabular-nums; }
+  .ro .v small { font-size: 10.5px; color: var(--ink-soft); margin-left: 2px; }
+  .ro[data-hi="1"] .v { color: var(--magenta); }
+  .ctl { display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .lbl { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+  .val { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 44px; background: transparent; margin: 0; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track { height: 2px; background: var(--ink-faint); }
+  input[type=range]::-moz-range-track { height: 2px; background: var(--ink-faint); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 20px; height: 20px; margin-top: -9px;
+    border-radius: 50%; background: var(--paper); border: 2px solid var(--ink);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink);
+  }
+  input[type=range]:focus-visible { outline: 2px solid var(--magenta); outline-offset: 4px; }
+  .seg { display: flex; border: 1px solid var(--ink); border-radius: 2px; overflow: hidden; }
+  .seg button {
+    flex: 1; min-height: 44px; padding: 0 8px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    background: transparent; color: var(--ink); border: 0; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .seg button:focus-visible { outline: 2px solid var(--magenta); outline-offset: -4px; }
+  .btn {
+    display: block; width: 100%; min-height: 44px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    background: transparent; color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; cursor: pointer;
+  }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+  .btn:focus-visible { outline: 2px solid var(--magenta); outline-offset: 2px; }
+  #hist { display: block; width: 100%; height: auto; }
+  .note { font-size: 12.5px; line-height: 1.55; color: var(--ink-soft); border-left: 2px solid var(--magenta); padding-left: 10px; margin: 0; }
+  .legend { margin: 0; padding: 12px; display: grid; gap: 10px 18px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .legend dt {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink); display: flex; align-items: center; gap: 7px;
+  }
+  .legend dt i { display: inline-block; width: 15px; height: 3px; flex: 0 0 15px; border-radius: 1px; background: var(--ink); }
+  .legend dt i.hot { background: var(--magenta); }
+  .legend dd { margin: 3px 0 0 22px; font-size: 12px; line-height: 1.4; color: var(--ink-soft); }
+  .prose h2 {
+    font-size: 13px; font-family: var(--mono); font-weight: 400; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--ink-soft); border-top: 1px solid var(--rule); padding-top: 12px; margin: 30px 0 12px;
+  }
+  .prose p { line-height: 1.62; margin: 0 0 13px; font-size: 15.5px; }
+  .prose a { color: var(--magenta); text-decoration: none; border-bottom: 1px solid rgba(168,50,102,.35); }
+  footer {
+    margin-top: 40px; border-top: 1px solid var(--rule); padding-top: 14px;
+    font-family: var(--mono); font-size: 11px; color: var(--ink-faint); letter-spacing: .05em;
+  }
+  .credits { font-family: var(--serif); font-size: 14px; line-height: 1.6; letter-spacing: 0; color: var(--ink-soft); max-width: 68ch; margin: 0 0 16px; }
+  .credits strong { color: var(--ink); font-weight: 600; }
+  footer a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid var(--ink-faint); }
+  #selftest { display: none; margin-top: 20px; }
+  #selftest.on { display: block; }
+  #selftest table { border-collapse: collapse; width: 100%; font-family: var(--mono); font-size: 11.5px; }
+  #selftest td { border-bottom: 1px solid var(--rule); padding: 6px 8px; vertical-align: top; }
+  #selftest td:first-child { width: 58px; font-weight: 700; letter-spacing: .06em; }
+  #selftest .pass td:first-child { color: #2c6f61; }
+  #selftest .fail td:first-child { color: var(--magenta); }
+  #selftest td:last-child { color: var(--ink-soft); text-align: right; }
+  .stTotal { font-family: var(--mono); font-size: 12px; padding: 10px 12px; border-top: 1px solid var(--rule); }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow"><a href="../">Explorables</a> &nbsp;/&nbsp; Episode 2</p>
+    <h1>Why Hexagons?</h1>
+    <p class="standfirst">
+      A honeycomb is not drawn. It is what a foam does when every junction is pulled equally from
+      three sides. Drag a corner out of place and watch the films haul it back to 120° — an angle
+      the simulation is never given.
+    </p>
+  </header>
+
+  <div class="stage">
+    <div class="main">
+      <div class="panel" id="chartWrap">
+        <canvas id="chart" width="900" height="620" role="img"
+          aria-label="A two-dimensional foam. Films meet at junctions. Drag a junction to pull it off 120 degrees."></canvas>
+        <div class="stateTag" id="stateTag">Relaxing</div>
+        <div class="hint">Drag a <b>vertex</b> &nbsp;·&nbsp; magenta is not yet at 120°</div>
+      </div>
+      <div class="panel">
+        <dl class="legend">
+          <div>
+            <dt><i></i>Film</dt>
+            <dd>A dry wall. Straight when the pressures match. An arc when they don't — the stroke is the model's arc, not a decoration.</dd>
+          </div>
+          <div>
+            <dt><i class="hot"></i>Off 120°</dt>
+            <dd>The junction under your finger, or one whose films have not balanced yet.</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="panel">
+        <div class="head">This junction</div>
+        <div class="readouts">
+          <div class="ro" id="roA"><span class="k">Angle</span><span class="v" id="ang0">—</span></div>
+          <div class="ro" id="roB"><span class="k">Angle</span><span class="v" id="ang1">—</span></div>
+          <div class="ro" id="roC"><span class="k">Angle</span><span class="v" id="ang2">—</span></div>
+          <div class="ro"><span class="k">Mean junction</span><span class="v" id="meanAng">—</span></div>
+          <div class="ro"><span class="k">Within 2° of 120</span><span class="v" id="near120">—</span></div>
+          <div class="ro"><span class="k">Mean sides</span><span class="v" id="meanN">—</span></div>
+        </div>
+        <div class="body"><p class="note" id="eulerNote">Mean sides is Euler's count. It is 6 as soon as every vertex has three films, crooked frame included.</p></div>
+      </div>
+
+      <div class="panel">
+        <div class="head">Selected cell</div>
+        <div class="readouts">
+          <div class="ro"><span class="k">Sides</span><span class="v" id="cellN">—</span></div>
+          <div class="ro"><span class="k">Area</span><span class="v" id="cellA">—</span></div>
+          <div class="ro" style="grid-column: 1 / -1"><span class="k">dA/dt while breathing</span><span class="v" id="cellD">coarsening off</span></div>
+        </div>
+        <div class="body"><p class="note">A regular n-gon has a corner of 120° only when n = 6. That is geometry, the ruler beside the foam. The foam still has to earn the angle.</p></div>
+      </div>
+
+      <div class="panel">
+        <div class="head">Angle histogram</div>
+        <div class="body" style="padding-bottom: 4px"><canvas id="hist" width="640" height="220"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="head">Controls</div>
+        <div class="body ctl">
+          <div>
+            <div class="row"><span class="lbl">Tension γ</span><span class="val" id="gRead">1.00</span></div>
+            <input id="tension" type="range" min="0" max="4" step="0.05" value="1" aria-label="Line tension">
+          </div>
+          <div>
+            <div class="row"><span class="lbl">Areas</span></div>
+            <div class="seg" role="group" aria-label="Area targets">
+              <button id="areasMixed" type="button" aria-pressed="true">Mixed</button>
+              <button id="areasEqual" type="button" aria-pressed="false">Equal</button>
+            </div>
+          </div>
+          <div>
+            <div class="row"><span class="lbl">Coarsening</span><span class="val" id="kRead">off</span></div>
+            <div class="seg" role="group" aria-label="Coarsening">
+              <button id="coarseOff" type="button" aria-pressed="true">Off</button>
+              <button id="coarseOn" type="button" aria-pressed="false">Breathe</button>
+            </div>
+            <input id="kappa" type="range" min="0.004" max="0.04" step="0.001" value="0.015" aria-label="Coarsening rate" disabled>
+          </div>
+          <div>
+            <div class="row"><span class="lbl">Start</span></div>
+            <div class="seg" role="group" aria-label="Initial condition">
+              <button id="startDisorder" type="button" aria-pressed="true">Disordered</button>
+              <button id="startSquares" type="button" aria-pressed="false">Squares</button>
+            </div>
+          </div>
+          <button class="btn" id="reshuffle" type="button">Reshuffle</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="prose">
+      <h2>What is allowed to be an input</h2>
+      <p>
+        Every film carries the same tension. A vertex creeps in the direction of the unbalanced pull.
+        Three equal pulls cancel only when the films stand at 120° to each other. Nothing in the step
+        writes down that number. Changing the tension changes how fast the creep is. It does not move
+        the angle the creep is heading for.
+      </p>
+      <p>
+        The opening frame is a Voronoi foam of scattered seeds, or a square grid. A hexagonal lattice
+        is not a seed. A pentagon stuck to a heptagon is allowed to remain: it is the scar a
+        neighbour-switch leaves, and it still has to meet at 120°.
+      </p>
+      <h2>Why six, and why that is not the discovery</h2>
+      <p>
+        On a torus with three films at every vertex, the average cell has exactly six sides. That is
+        Euler's formula, true of the crooked first frame. The page prints it so it is not mistaken
+        for a result of the relaxation. The result is the angle. A hexagon is what you get when that
+        angle and six sides land on the same cell, and the pressures match so the sides are straight.
+      </p>
+      <h2>The second act</h2>
+      <p>
+        Turn on <em>breathe</em> and the target areas change by von Neumann's rule: cells with more
+        than six sides grow, cells with fewer shrink, six-sided cells hold. The rate is a clock you
+        set. A physical permeability for these films was not sourced, and the page does not invent one.
+      </p>
+      <h2>Simplifications</h2>
+      <p>
+        Two dimensions. Real foams are three-dimensional, and four films meet along an edge at the
+        tetrahedral angle; that angle is not a mode here. Films have no thickness. The same tension
+        on every film, no gravity, no temperature, no wax. Vertices have no mass. The sample is a
+        torus, so a wall cannot pin a corner at 90°. Coarsening is only the (n − 6) rule. The length
+        that triggers a neighbour switch is a numerical cutoff, not a measured length.
+      </p>
+      <p>
+        This is not a bee, and it is not a proof of the honeycomb conjecture. Whether wax flows into
+        hexagons on its own is a dispute in the literature; the sources are in the fact sheet, and
+        they do not agree. The standfirst leaves them out.
+      </p>
+    </div>
+  </div>
+
+  <div class="panel" id="selftest">
+    <div class="head">Self-test — the accuracy anchors</div>
+    <table id="stBody"></table>
+    <div class="stTotal" id="stTotal"></div>
+  </div>
+
+  <footer>
+    <p class="credits">
+      Built by <strong>Justin Simpson</strong> with a Cursor cloud agent. The fact sheet was
+      consolidated in that session from the papers it cites. The Hermes fleet was not run for this pass.
+    </p>
+    Explorables · Episode 2 &nbsp;·&nbsp;
+    <a href="FACTSHEET.md">Fact sheet &amp; sources</a> &nbsp;·&nbsp;
+    <a href="SPEC.md">Design spec</a> &nbsp;·&nbsp;
+    <a href="?selftest=1">Run the self-test</a>
+  </footer>
+</div>
+<script>
+"use strict";
+const L = 1;
+const SEED0 = 20261018;
+const NSITES = 48;
+const EPS_FRAC = 0.15;
+const SPLIT_GAP = 0.025;
+let gamma = 1;
+let kappaRate = 0.015;
+let coarse = false;
+let equalAreas = false;
+let X = [], Y = [], cells = [];
+let held = -1, selected = 0, selectedCell = 0;
+let mode = "disorder";
+let seed = SEED0;
+let reduceMotion = false;
+let simTime = 0;
+
+const dwrap = (a, b) => { let d = b - a; d -= Math.round(d / L) * L; return d; };
+const wrap1 = (x) => { x %= L; return x < 0 ? x + L : x; };
+const dist = (a, b) => Math.hypot(dwrap(X[a], X[b]), dwrap(Y[a], Y[b]));
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function cellGeom(c) {
+  const n = c.v.length;
+  const px = new Array(n), py = new Array(n);
+  let x = X[c.v[0]], y = Y[c.v[0]];
+  px[0] = x; py[0] = y;
+  for (let i = 1; i < n; i++) {
+    x += dwrap(x, X[c.v[i]]);
+    y += dwrap(y, Y[c.v[i]]);
+    px[i] = x; py[i] = y;
+  }
+  let a2 = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    a2 += px[i] * py[j] - px[j] * py[i];
+  }
+  return { px, py, area: a2 / 2 };
+}
+
+function arcOf(px, py, qx, qy, k0) {
+  const dx = qx - px, dy = qy - py;
+  const chord = Math.hypot(dx, dy) || 1e-12;
+  const tx = dx / chord, ty = dy / chord, nx = -ty, ny = tx;
+  if (!(Math.abs(k0) * chord > 1e-4)) {
+    return { length: chord, tpx: tx, tpy: ty, seg: 0, pts: [{ x: px, y: py }, { x: qx, y: qy }], R: Infinity, k: 0 };
+  }
+  let k = k0;
+  const maxK = 1.5 / chord;
+  if (Math.abs(k) > maxK) k = Math.sign(k) * maxK;
+  const R = 1 / k;
+  const h = Math.sqrt(Math.max(0, R * R - (chord * 0.5) ** 2));
+  const side = Math.sign(R);
+  const cx = (px + qx) / 2 + side * h * nx;
+  const cy = (py + qy) / 2 + side * h * ny;
+  const rpx = px - cx, rpy = py - cy, rqx = qx - cx, rqy = qy - cy;
+  let tpx, tpy;
+  if (k > 0) { tpx = -rpy; tpy = rpx; } else { tpx = rpy; tpy = -rpx; }
+  const pl = Math.hypot(tpx, tpy) || 1;
+  let a0 = Math.atan2(rpy, rpx), a1 = Math.atan2(rqy, rqx);
+  let da = a1 - a0;
+  if (k > 0) { while (da <= 0) da += 2 * Math.PI; if (da > Math.PI) da -= 2 * Math.PI; }
+  else { while (da >= 0) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; }
+  const seg = 0.5 * R * R * (da - Math.sin(da));
+  const rad = Math.hypot(rpx, rpy);
+  const pts = [];
+  const N = 8;
+  for (let i = 0; i <= N; i++) {
+    const ang = a0 + (da * i) / N;
+    const ca = Math.cos(ang - a0), sa = Math.sin(ang - a0);
+    pts.push({ x: cx + rpx * ca - rpy * sa, y: cy + rpx * sa + rpy * ca });
+  }
+  return { length: Math.abs(rad * da), tpx: tpx / pl, tpy: tpy / pl, seg, pts, R: Math.abs(R), k };
+}
+
+function directed() {
+  const dir = new Map();
+  cells.forEach((c, ci) => {
+    if (!c.alive) return;
+    const n = c.v.length;
+    for (let i = 0; i < n; i++) dir.set(c.v[i] + ">" + c.v[(i + 1) % n], ci);
+  });
+  return dir;
+}
+
+function kappaOf(pL, pR) {
+  if (!(gamma > 0)) return 0;
+  return (pL - pR) / gamma;
+}
+
+function foamAreas() {
+  const dir = directed();
+  const area = cells.map(() => 0);
+  const geoms = cells.map(c => (c.alive ? cellGeom(c) : null));
+  cells.forEach((c, ci) => { if (c.alive) area[ci] = geoms[ci].area; });
+  const seen = new Set();
+  cells.forEach((c, ci) => {
+    if (!c.alive) return;
+    const n = c.v.length, g = geoms[ci];
+    for (let i = 0; i < n; i++) {
+      const a = c.v[i], b = c.v[(i + 1) % n];
+      const key = a < b ? a + "," + b : b + "," + a;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const right = dir.get(b + ">" + a);
+      if (right === undefined) continue;
+      const seg = arcOf(g.px[i], g.py[i], g.px[(i + 1) % n], g.py[(i + 1) % n], kappaOf(c.P, cells[right].P)).seg;
+      area[ci] += seg;
+      area[right] -= seg;
+    }
+  });
+  return area;
+}
+
+function fitP(n) {
+  if (!(gamma > 0)) return;
+  const nC = cells.length;
+  const steps = Math.max(2, Math.min(6, n));
+  for (let it = 0; it < steps; it++) {
+    const area = foamAreas();
+    const dir = directed();
+    const J = cells.map(() => new Float64Array(nC));
+    const rhs = new Float64Array(nC);
+    let err = 0;
+    cells.forEach((c, i) => {
+      if (!c.alive) return;
+      rhs[i] = c.Astar - area[i];
+      err = Math.max(err, Math.abs(rhs[i]));
+    });
+    if (err < 1e-7) return;
+    const seen = new Set();
+    cells.forEach((c, ci) => {
+      if (!c.alive) return;
+      const g = cellGeom(c);
+      const nv = c.v.length;
+      for (let i = 0; i < nv; i++) {
+        const a = c.v[i], b = c.v[(i + 1) % nv];
+        const key = a < b ? a + "," + b : b + "," + a;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const right = dir.get(b + ">" + a);
+        if (right === undefined) continue;
+        const chord = Math.hypot(g.px[(i + 1) % nv] - g.px[i], g.py[(i + 1) % nv] - g.py[i]);
+        const w = (chord * chord * chord) / (12 * gamma);
+        J[ci][ci] += w;
+        J[right][right] += w;
+        J[ci][right] -= w;
+        J[right][ci] -= w;
+      }
+    });
+    for (let i = 0; i < nC; i++) if (cells[i].alive) J[i][i] += 1e-8;
+    const dP = solveSymmetric(J, rhs);
+    cells.forEach((c, i) => {
+      if (!c.alive) return;
+      c.P += dP[i];
+      if (c.P > 80) c.P = 80;
+      if (c.P < -80) c.P = -80;
+    });
+  }
+}
+
+function cellsAt(v) {
+  const out = [];
+  cells.forEach((c, ci) => {
+    if (!c.alive) return;
+    for (let i = 0; i < c.v.length; i++) if (c.v[i] === v) out.push({ ci, i });
+  });
+  return out;
+}
+
+function forceAt(v, dir) {
+  let fx = 0, fy = 0, n = 0;
+  const dirs = [];
+  const hits = cellsAt(v);
+  for (const h of hits) {
+    const c = cells[h.ci];
+    const b = c.v[(h.i + 1) % c.v.length];
+    const right = dir.get(b + ">" + v);
+    if (right === undefined) continue;
+    const g = cellGeom(c);
+    const arc = arcOf(g.px[h.i], g.py[h.i], g.px[(h.i + 1) % c.v.length], g.py[(h.i + 1) % c.v.length], kappaOf(c.P, cells[right].P));
+    fx += arc.tpx; fy += arc.tpy; n++;
+    dirs.push(Math.atan2(arc.tpy, arc.tpx));
+  }
+  dirs.sort((a, b) => a - b);
+  const angles = [];
+  let dev = 0;
+  for (let i = 0; i < dirs.length; i++) {
+    let d = (i + 1 === dirs.length ? dirs[0] + 2 * Math.PI : dirs[i + 1]) - dirs[i];
+    if (d < 0) d += 2 * Math.PI;
+    const deg = d * 180 / Math.PI;
+    angles.push(deg);
+    dev = Math.max(dev, Math.abs(deg - 120));
+  }
+  return { fx, fy, n, mag: Math.hypot(fx, fy), dev, angles };
+}
+
+function localAreasOk(v) {
+  for (const h of cellsAt(v)) {
+    const a = cellGeom(cells[h.ci]).area;
+    if (!(a > 1e-6)) return false;
+  }
+  return true;
+}
+
+function gsMove(v) {
+  if (!(gamma > 0) || v === held) return false;
+  const f = forceAt(v, directed());
+  if (f.n !== 3 || f.mag < 8e-4) return false;
+  const ox = X[v], oy = Y[v];
+  const Ps = cells.map(c => c.P);
+  const mus = f.dev > 15 ? [0.016, 0.006] : f.dev > 4 ? [0.006, 0.002] : [0.002, 0.0007, 0.00025];
+  const thresh = f.dev > 4 ? 0.004 : 0.0004;
+  for (const mu0 of mus) {
+    const mu = mu0 * Math.max(gamma, 0.05);
+    X[v] = wrap1(ox + mu * f.fx);
+    Y[v] = wrap1(oy + mu * f.fy);
+    for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+    fitP(f.dev > 4 ? 4 : 8);
+    const g = forceAt(v, directed());
+    if (localAreasOk(v) && g.n === 3 && g.dev < f.dev - thresh) {
+      // μ₀·|F| is the step γ=1 would take. Divide by γ so the clock runs with tension.
+      simTime += (mu * f.mag) / (gamma * f.mag);
+      return true;
+    }
+  }
+  X[v] = ox; Y[v] = oy;
+  for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+  return false;
+}
+
+function allVerts() {
+  const ids = [];
+  const seen = new Uint8Array(X.length);
+  cells.forEach(c => {
+    if (!c.alive) return;
+    c.v.forEach(v => { if (!seen[v]) { seen[v] = 1; ids.push(v); } });
+  });
+  return ids;
+}
+
+function tangentMax() {
+  const dir = directed();
+  let m = 0, n3 = 0;
+  for (const v of allVerts()) {
+    const f = forceAt(v, dir);
+    if (f.n !== 3) continue;
+    n3++;
+    if (f.dev > m) m = f.dev;
+  }
+  return { m, n3 };
+}
+
+function areaGradients() {
+  const nC = cells.length;
+  const Gx = cells.map(() => new Float64Array(X.length));
+  const Gy = cells.map(() => new Float64Array(X.length));
+  cells.forEach((c, ci) => {
+    if (!c.alive) return;
+    const g = cellGeom(c);
+    const n = c.v.length;
+    for (let i = 0; i < n; i++) {
+      const im = (i - 1 + n) % n, ip = (i + 1) % n;
+      const id = c.v[i];
+      Gx[ci][id] += (g.py[im] - g.py[ip]) / 2;
+      Gy[ci][id] += (g.px[ip] - g.px[im]) / 2;
+    }
+  });
+  return { Gx, Gy, nC };
+}
+
+function solveSymmetric(M, rhs) {
+  const n = rhs.length;
+  const A = M.map((row, i) => Array.from(row).concat(rhs[i]));
+  for (let i = 0; i < n; i++) {
+    let p = i;
+    for (let r = i + 1; r < n; r++) if (Math.abs(A[r][i]) > Math.abs(A[p][i])) p = r;
+    const tmp = A[i]; A[i] = A[p]; A[p] = tmp;
+    const piv = A[i][i];
+    if (Math.abs(piv) < 1e-14) continue;
+    for (let r = i + 1; r < n; r++) {
+      const f = A[r][i] / piv;
+      if (!f) continue;
+      for (let c = i; c <= n; c++) A[r][c] -= f * A[i][c];
+    }
+  }
+  const lam = new Float64Array(n);
+  for (let i = n - 1; i >= 0; i--) {
+    let s = A[i][n];
+    for (let c = i + 1; c < n; c++) s -= A[i][c] * lam[c];
+    lam[i] = Math.abs(A[i][i]) < 1e-14 ? 0 : s / A[i][i];
+  }
+  return lam;
+}
+
+function projectedDirection() {
+  const nV = X.length;
+  const fx = new Float64Array(nV);
+  const fy = new Float64Array(nV);
+  const dir = directed();
+  for (const v of allVerts()) {
+    if (v === held) continue;
+    const f = forceAt(v, dir);
+    if (f.n !== 3) continue;
+    fx[v] = f.fx; fy[v] = f.fy;
+  }
+  const { Gx, Gy, nC } = areaGradients();
+  const M = cells.map(() => new Float64Array(nC));
+  const rhs = new Float64Array(nC);
+  const ridge = 1e-6;
+  for (let b = 0; b < nC; b++) {
+    if (!cells[b].alive) continue;
+    let gf = 0;
+    for (let i = 0; i < nV; i++) gf += Gx[b][i] * fx[i] + Gy[b][i] * fy[i];
+    rhs[b] = -gf;
+    for (let c = 0; c < nC; c++) {
+      if (!cells[c].alive) continue;
+      let dot = 0;
+      for (let i = 0; i < nV; i++) dot += Gx[b][i] * Gx[c][i] + Gy[b][i] * Gy[c][i];
+      M[b][c] = dot;
+    }
+    M[b][b] += ridge;
+  }
+  const lam = solveSymmetric(M, rhs);
+  const dx = new Float64Array(nV);
+  const dy = new Float64Array(nV);
+  let mag = 0;
+  for (let i = 0; i < nV; i++) {
+    let lx = fx[i], ly = fy[i];
+    for (let c = 0; c < nC; c++) { lx += lam[c] * Gx[c][i]; ly += lam[c] * Gy[c][i]; }
+    dx[i] = lx; dy[i] = ly;
+    mag = Math.max(mag, Math.hypot(lx, ly));
+  }
+  let dot = 0, nf = 0, nd = 0;
+  for (let i = 0; i < nV; i++) {
+    dot += dx[i] * fx[i] + dy[i] * fy[i];
+    nf += fx[i] * fx[i] + fy[i] * fy[i];
+    nd += dx[i] * dx[i] + dy[i] * dy[i];
+  }
+  return { dx, dy, mag, align: dot / (Math.sqrt(nf * nd) || 1), force: Math.sqrt(nf), step: Math.sqrt(nd) };
+}
+
+function projectRelax(rounds) {
+  const log = [];
+  let acc = 0;
+  for (let r = 0; r < rounds; r++) {
+    fitP(6);
+    const L0 = filmLength();
+    const before = tangentMax().m;
+    const dir = projectedDirection();
+    if (!(dir.mag > 1e-6)) { log.push({ acc: 0, m: +before.toFixed(3), L: +L0.toFixed(4) }); break; }
+    if (r === 0 || r === rounds - 1) log.push({ align: +dir.align.toFixed(3), force: +dir.force.toFixed(3), step: +dir.step.toFixed(3) });
+    const snap = snapshot();
+    let took = false;
+    for (const mu of [0.004, 0.0015, 0.0005, 0.00015]) {
+      restore(snap);
+      const step = mu / dir.mag;
+      for (let i = 0; i < X.length; i++) {
+        X[i] = wrap1(X[i] + step * dir.dx[i]);
+        Y[i] = wrap1(Y[i] + step * dir.dy[i]);
+      }
+      if (!finiteState()) continue;
+      fitP(8);
+      const area = foamAreas();
+      let err = 0;
+      cells.forEach((c, i) => { if (c.alive) err = Math.max(err, Math.abs(c.Astar - area[i])); });
+      const L1 = filmLength();
+      if (err < 2e-3 && L1 < L0 - 1e-6) {
+        simTime += mu / Math.max(gamma, 1e-4);
+        took = true;
+        acc++;
+        break;
+      }
+    }
+    if (!took) {
+      restore(snap);
+      log.push({ acc: 0, m: +before.toFixed(3), L: +L0.toFixed(4), stop: true });
+      break;
+    }
+    log.push({ m: +tangentMax().m.toFixed(3), L: +filmLength().toFixed(4) });
+  }
+  return { acc, log };
+}
+
+function settle(limit, maxSweeps) {
+  let sweeps = 0;
+  let stall = 0;
+  while (sweeps < maxSweeps && tangentMax().m > limit) {
+    const before = tangentMax().m;
+    const batch = Math.min(40, maxSweeps - sweeps);
+    const log = syncRelax(batch);
+    sweeps += Math.max(1, log.length);
+    const flips = t1Pass(2);
+    const now = tangentMax().m;
+    if (now <= limit) break;
+    const stopped = log.length && log[log.length - 1].stop;
+    if (flips.some(f => !f.fail) || now < before - 0.05) stall = 0;
+    else stall++;
+    if (stall >= 2 && stopped) break;
+  }
+  fitP(3);
+  return sweeps;
+}
+
+function newtonVertex(v) {
+  if (v === held) return false;
+  const f = forceAt(v, directed());
+  if (f.n !== 3 || f.mag < 2e-4) return false;
+  const ox = X[v], oy = Y[v];
+  const eps = 1e-4;
+  X[v] = wrap1(ox + eps);
+  const fx = forceAt(v, directed());
+  X[v] = ox;
+  Y[v] = wrap1(oy + eps);
+  const fy = forceAt(v, directed());
+  X[v] = ox; Y[v] = oy;
+  const j00 = (fx.fx - f.fx) / eps, j10 = (fx.fy - f.fy) / eps;
+  const j01 = (fy.fx - f.fx) / eps, j11 = (fy.fy - f.fy) / eps;
+  const det = j00 * j11 - j01 * j10;
+  if (Math.abs(det) < 1e-6) return false;
+  const dx = (-f.fx * j11 + f.fy * j01) / det;
+  const dy = (-j00 * f.fy + j10 * f.fx) / det;
+  if (!isFinite(dx) || !isFinite(dy)) return false;
+  for (const damp of [1, 0.5, 0.2]) {
+    if (Math.hypot(damp * dx, damp * dy) > 0.05) continue;
+    X[v] = wrap1(ox + damp * dx);
+    Y[v] = wrap1(oy + damp * dy);
+    if (!localAreasOk(v)) continue;
+    const g = forceAt(v, directed());
+    if (g.n === 3 && g.mag < f.mag * 0.95) {
+      simTime += Math.hypot(damp * dx, damp * dy) / Math.max(gamma, 1e-4);
+      return true;
+    }
+  }
+  X[v] = ox; Y[v] = oy;
+  return false;
+}
+
+function newtonPolish(rounds) {
+  const log = [];
+  for (let r = 0; r < rounds; r++) {
+    fitP(3);
+    let guard = tangentMax().m;
+    let acc = 0;
+    const dir = directed();
+    const ranked = [];
+    for (const v of allVerts()) {
+      const f = forceAt(v, dir);
+      if (f.n === 3 && f.dev > 0.4) ranked.push([v, f.dev]);
+    }
+    ranked.sort((a, b) => b[1] - a[1]);
+    for (const [v] of ranked) {
+      const ox = X[v], oy = Y[v], Ps = cells.map(c => c.P);
+      const f = forceAt(v, directed());
+      if (f.n !== 3 || f.mag < 2e-4) continue;
+      const eps = 1e-4;
+      X[v] = wrap1(ox + eps);
+      const fx = forceAt(v, directed());
+      X[v] = ox; Y[v] = wrap1(oy + eps);
+      const fy = forceAt(v, directed());
+      X[v] = ox; Y[v] = oy;
+      const j00 = (fx.fx - f.fx) / eps, j10 = (fx.fy - f.fy) / eps;
+      const j01 = (fy.fx - f.fx) / eps, j11 = (fy.fy - f.fy) / eps;
+      const det = j00 * j11 - j01 * j10;
+      if (Math.abs(det) < 1e-6) continue;
+      const dx = (-f.fx * j11 + f.fy * j01) / det;
+      const dy = (-j00 * f.fy + j10 * f.fx) / det;
+      let good = false;
+      for (const damp of [0.35, 0.15, 0.05]) {
+        if (Math.hypot(damp * dx, damp * dy) > 0.02) continue;
+        X[v] = wrap1(ox + damp * dx);
+        Y[v] = wrap1(oy + damp * dy);
+        for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+        if (!localAreasOk(v)) continue;
+        fitP(2);
+        const now = tangentMax().m;
+        if (now < guard - 0.002) { guard = now; good = true; break; }
+      }
+      if (!good) {
+        X[v] = ox; Y[v] = oy;
+        for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+      } else acc++;
+    }
+    log.push({ acc, m: +guard.toFixed(3) });
+    if (guard <= 1 || acc === 0) break;
+  }
+  return log;
+}
+
+function newtonRelax(rounds) {
+  const log = [];
+  for (let r = 0; r < rounds; r++) {
+    fitP(3);
+    let acc = 0;
+    for (const v of allVerts()) if (newtonVertex(v)) acc++;
+    const m = tangentMax().m;
+    log.push({ acc, m: +m.toFixed(3) });
+    if (m <= 1 || acc === 0) break;
+  }
+  fitP(3);
+  return log;
+}
+
+function microSteps() {
+  fitP(12);
+  const before = scoreFoam();
+  const dir = directed();
+  const fx = new Float64Array(X.length), fy = new Float64Array(X.length);
+  for (const v of allVerts()) {
+    const f = forceAt(v, dir);
+    if (f.n === 3) { fx[v] = f.fx; fy[v] = f.fy; }
+  }
+  const snap = snapshot();
+  const rows = [];
+  for (const mu of [3e-4, 1e-4, 3e-5, 1e-5, -1e-4]) {
+    restore(snap);
+    for (let i = 0; i < X.length; i++) {
+      X[i] = wrap1(X[i] + mu * fx[i]);
+      Y[i] = wrap1(Y[i] + mu * fy[i]);
+    }
+    const frozen = scoreFoam();
+    fitP(20);
+    const refit = scoreFoam();
+    const area = foamAreas();
+    let err = 0;
+    cells.forEach((c, i) => { if (c.alive) err = Math.max(err, Math.abs(c.Astar - area[i])); });
+    rows.push({
+      mu, frozenS: +frozen.s.toFixed(2), frozenM: +frozen.m.toFixed(3),
+      refitS: +refit.s.toFixed(2), refitM: +refit.m.toFixed(3), err: +err.toExponential(2)
+    });
+  }
+  restore(snap);
+  return { s: +before.s.toFixed(2), m: +before.m.toFixed(3), rows };
+}
+
+function syncRelax(rounds) {
+  const log = [];
+  for (let r = 0; r < rounds; r++) {
+    fitP(4);
+    const dir = directed();
+    const fx = new Float64Array(X.length), fy = new Float64Array(X.length);
+    for (const v of allVerts()) {
+      if (v === held) continue;
+      const f = forceAt(v, dir);
+      if (f.n === 3) { fx[v] = f.fx; fy[v] = f.fy; }
+    }
+    const before = scoreFoam();
+    const snap = snapshot();
+    let took = false;
+    let usedMu = 0;
+    for (const mu of [0.0012, 0.0004, 0.00015, 0.00005]) {
+      restore(snap);
+      for (let i = 0; i < X.length; i++) {
+        X[i] = wrap1(X[i] + mu * fx[i]);
+        Y[i] = wrap1(Y[i] + mu * fy[i]);
+      }
+      if (!finiteState()) continue;
+      fitP(5);
+      const sc = scoreFoam();
+      if (sc.s < before.s - 0.005) { took = true; usedMu = mu; break; }
+    }
+    if (!took) {
+      restore(snap);
+      log.push({ stop: true, m: +before.m.toFixed(3), s: +before.s.toFixed(1) });
+      break;
+    }
+    const sc = scoreFoam();
+    simTime += usedMu / Math.max(gamma, 1e-4);
+    log.push({ m: +sc.m.toFixed(3), s: +sc.s.toFixed(1) });
+  }
+  return log;
+}
+
+function ratchet(tries) {
+  let improved = 0;
+  let dev = tangentMax().m;
+  for (let t = 0; t < tries && dev > 0.8; t++) {
+    const dir = directed();
+    let worst = -1, worstDev = 0, fx = 0, fy = 0;
+    for (const v of allVerts()) {
+      const f = forceAt(v, dir);
+      if (f.n === 3 && f.dev > worstDev) { worst = v; worstDev = f.dev; fx = f.fx; fy = f.fy; }
+    }
+    if (worst < 0) break;
+    const ox = X[worst], oy = Y[worst], Ps = cells.map(c => c.P);
+    let good = false;
+    for (const mu of [0.03, 0.012, 0.004, 0.0015, 0.0004]) {
+      X[worst] = wrap1(ox + mu * fx);
+      Y[worst] = wrap1(oy + mu * fy);
+      for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+      fitP(8);
+      if (!localAreasOk(worst)) continue;
+      const now = tangentMax().m;
+      if (now < dev - 0.005) { dev = now; good = true; break; }
+    }
+    if (!good) {
+      X[worst] = ox; Y[worst] = oy;
+      for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+      break;
+    }
+    improved++;
+  }
+  return { improved, dev };
+}
+
+function radialNeighbors(v) {
+  return cellsAt(v).map(h => {
+    const c = cells[h.ci];
+    const n = c.v.length;
+    return { ci: h.ci, i: h.i, prev: c.v[(h.i - 1 + n) % n], next: c.v[(h.i + 1) % n] };
+  });
+}
+
+function chooseRot(v) {
+  const info = radialNeighbors(v);
+  const seen = new Map();
+  for (const h of info) {
+    if (!seen.has(h.next)) seen.set(h.next, Math.atan2(dwrap(Y[v], Y[h.next]), dwrap(X[v], X[h.next])));
+  }
+  const nbs = [...seen.keys()].sort((a, b) => seen.get(a) - seen.get(b));
+  if (nbs.length !== 4) return 0;
+  const d02 = dist(nbs[0], nbs[2]), d13 = dist(nbs[1], nbs[3]);
+  if (Math.abs(d02 - d13) < 1e-9) return v % 2;
+  const shorter = d02 < d13
+    ? [dwrap(X[nbs[0]], X[nbs[2]]), dwrap(Y[nbs[0]], Y[nbs[2]])]
+    : [dwrap(X[nbs[1]], X[nbs[3]]), dwrap(Y[nbs[1]], Y[nbs[3]])];
+  let best = 0, bestDot = -1;
+  for (const rot of [0, 1]) {
+    const n = [0, 1, 2, 3].map(k => nbs[(k + rot) % 4]);
+    let cax = 0, cay = 0, cbx = 0, cby = 0;
+    for (const id of [n[0], n[1]]) { cax += dwrap(X[v], X[id]); cay += dwrap(Y[v], Y[id]); }
+    for (const id of [n[2], n[3]]) { cbx += dwrap(X[v], X[id]); cby += dwrap(Y[v], Y[id]); }
+    const dx = cbx - cax, dy = cby - cay;
+    const dot = Math.abs(dx * shorter[0] + dy * shorter[1]) / ((Math.hypot(dx, dy) || 1) * (Math.hypot(...shorter) || 1));
+    if (dot > bestDot) { bestDot = dot; best = rot; }
+  }
+  return best;
+}
+
+function splitVertex(v, rot, gap) {
+  const info = radialNeighbors(v);
+  if (info.length !== 4) return false;
+  const seen = new Map();
+  for (const h of info) {
+    if (!seen.has(h.next)) seen.set(h.next, Math.atan2(dwrap(Y[v], Y[h.next]), dwrap(X[v], X[h.next])));
+  }
+  const nbs = [...seen.keys()].sort((a, b) => seen.get(a) - seen.get(b));
+  if (nbs.length !== 4) return false;
+  const n = [0, 1, 2, 3].map(k => nbs[(k + rot) % 4]);
+  const q = X.length;
+  X.push(X[v]); Y.push(Y[v]);
+  const owner = new Map([[n[0], v], [n[1], v], [n[2], q], [n[3], q]]);
+  let cax = 0, cay = 0, cbx = 0, cby = 0;
+  for (const id of [n[0], n[1]]) { cax += dwrap(X[v], X[id]); cay += dwrap(Y[v], Y[id]); }
+  for (const id of [n[2], n[3]]) { cbx += dwrap(X[v], X[id]); cby += dwrap(Y[v], Y[id]); }
+  let dx = cbx - cax, dy = cby - cay;
+  const len = Math.hypot(dx, dy) || 1;
+  dx /= len; dy /= len;
+  const gapUse = gap > 0 ? gap : SPLIT_GAP;
+  X[v] = wrap1(X[v] - dx * gapUse);
+  Y[v] = wrap1(Y[v] - dy * gapUse);
+  X[q] = wrap1(X[v] + dx * gapUse * 2);
+  Y[q] = wrap1(Y[v] + dy * gapUse * 2);
+  for (const h of info) {
+    const c = cells[h.ci];
+    const op = owner.get(h.prev), on = owner.get(h.next);
+    if (op === undefined || on === undefined) return false;
+    if (op === on) c.v[h.i] = op;
+    else c.v.splice(h.i, 1, op, on);
+  }
+  return q;
+}
+
+function squareGrid() {
+  const G = 7;
+  X = []; Y = []; cells = [];
+  const id = (i, j) => ((i % G) + G) % G + (((j % G) + G) % G) * G;
+  for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) { X.push(i / G); Y.push(j / G); }
+  const A = 1 / (G * G);
+  for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) {
+    cells.push({ v: [id(i, j), id(i + 1, j), id(i + 1, j + 1), id(i, j + 1)], alive: true, Astar: A, A0: A, P: 0 });
+  }
+  mode = "squares";
+  held = -1; selected = 0; selectedCell = 0;
+}
+
+function clipHalf(poly, mx, my, nx, ny) {
+  const inside = (p) => (p.x - mx) * nx + (p.y - my) * ny <= 1e-10;
+  const hit = (a, b) => {
+    const d1 = (a.x - mx) * nx + (a.y - my) * ny;
+    const d2 = (b.x - mx) * nx + (b.y - my) * ny;
+    const t = d1 / (d1 - d2 || 1e-12);
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+  };
+  const out = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const ia = inside(a), ib = inside(b);
+    if (ia && ib) out.push(b);
+    else if (ia && !ib) out.push(hit(a, b));
+    else if (!ia && ib) { out.push(hit(a, b)); out.push(b); }
+  }
+  return out;
+}
+
+function voronoiFoam(nSites, sd) {
+  const rnd = mulberry32(sd);
+  const sites = [];
+  let guard = 0;
+  while (sites.length < nSites && guard++ < 40000) {
+    const x = rnd(), y = rnd();
+    if (sites.every(s => Math.hypot(dwrap(s.x, x), dwrap(s.y, y)) > 0.055)) sites.push({ x, y });
+  }
+  X = []; Y = []; cells = [];
+  function vid(x, y) {
+    x = wrap1(x); y = wrap1(y);
+    for (let i = 0; i < X.length; i++) {
+      if (Math.hypot(dwrap(X[i], x), dwrap(Y[i], y)) < 2e-5) return i;
+    }
+    X.push(x); Y.push(y);
+    return X.length - 1;
+  }
+  for (let i = 0; i < sites.length; i++) {
+    const s = sites[i];
+    let poly = [
+      { x: s.x - 1.3, y: s.y - 1.3 }, { x: s.x + 1.3, y: s.y - 1.3 },
+      { x: s.x + 1.3, y: s.y + 1.3 }, { x: s.x - 1.3, y: s.y + 1.3 }
+    ];
+    for (let j = 0; j < sites.length; j++) if (j !== i) {
+      for (const ox of [-1, 0, 1]) for (const oy of [-1, 0, 1]) {
+        const px = sites[j].x + ox, py = sites[j].y + oy;
+        poly = clipHalf(poly, (s.x + px) / 2, (s.y + py) / 2, px - s.x, py - s.y);
+      }
+    }
+    const ring = [];
+    for (const p of poly) {
+      const idv = vid(p.x, p.y);
+      if (ring[ring.length - 1] !== idv) ring.push(idv);
+    }
+    if (ring.length > 1 && ring[0] === ring[ring.length - 1]) ring.pop();
+    if (ring.length < 3) continue;
+    const c = { v: ring, alive: true, Astar: 0, A0: 0, P: 0 };
+    if (cellGeom(c).area < 0) c.v.reverse();
+    const a = Math.abs(cellGeom(c).area);
+    c.Astar = a; c.A0 = a;
+    cells.push(c);
+  }
+  mode = "disorder";
+  held = -1; selected = 0; selectedCell = 0;
+  applyAreaMode();
+}
+
+function applyAreaMode() {
+  const alive = cells.filter(c => c.alive);
+  if (equalAreas) {
+    const a = 1 / alive.length;
+    alive.forEach(c => { c.Astar = a; });
+  } else {
+    let s = 0;
+    alive.forEach(c => { s += c.A0; });
+    alive.forEach(c => { c.Astar = c.A0 / s; });
+  }
+}
+
+function degreeOf(v) {
+  return cellsAt(v).length;
+}
+
+function firstFour() {
+  const seen = new Uint8Array(X.length);
+  for (const c of cells) {
+    if (!c.alive) continue;
+    for (const v of c.v) {
+      if (seen[v]) continue;
+      seen[v] = 1;
+      if (degreeOf(v) === 4) return v;
+    }
+  }
+  return -1;
+}
+
+function splitSome(n) {
+  let k = 0;
+  while (k < n) {
+    const v = firstFour();
+    if (v < 0) break;
+    splitVertex(v, chooseRot(v));
+    k++;
+  }
+  return k;
+}
+
+function meanN() {
+  let s = 0, f = 0;
+  cells.forEach(c => { if (!c.alive) return; s += c.v.length; f++; });
+  return { mean: f ? s / f : 0, sides: s, faces: f };
+}
+
+function filmLength() {
+  const dir = directed();
+  const seen = new Set();
+  let Lsum = 0;
+  cells.forEach(c => {
+    if (!c.alive) return;
+    const g = cellGeom(c);
+    const n = c.v.length;
+    for (let i = 0; i < n; i++) {
+      const a = c.v[i], b = c.v[(i + 1) % n];
+      const key = a < b ? a + "," + b : b + "," + a;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const right = dir.get(b + ">" + a);
+      if (right === undefined) continue;
+      Lsum += arcOf(g.px[i], g.py[i], g.px[(i + 1) % n], g.py[(i + 1) % n], kappaOf(c.P, cells[right].P)).length;
+    }
+  });
+  return Lsum;
+}
+
+function coarsen(dt) {
+  cells.forEach(c => {
+    if (!c.alive) return;
+    c.Astar += kappaRate * (c.v.length - 6) * dt;
+    if (c.Astar < 1e-4) c.Astar = 1e-4;
+  });
+  let s = 0;
+  cells.forEach(c => { if (c.alive) s += c.Astar; });
+  if (s > 0) cells.forEach(c => { if (c.alive) c.Astar /= s; });
+}
+
+function snapshot() {
+  return JSON.stringify({ X, Y, cells, gamma, equalAreas, mode, seed });
+}
+function restore(s) {
+  const o = JSON.parse(s);
+  X = o.X; Y = o.Y; cells = o.cells; gamma = o.gamma; equalAreas = o.equalAreas; mode = o.mode; seed = o.seed;
+}
+
+function finiteState() {
+  if (!isFinite(gamma)) return false;
+  for (let i = 0; i < X.length; i++) if (!isFinite(X[i]) || !isFinite(Y[i])) return false;
+  for (const c of cells) {
+    if (!isFinite(c.P) || !isFinite(c.Astar)) return false;
+    if (c.alive && !(cellGeom(c).area > 0)) return false;
+  }
+  return true;
+}
+
+/* ---------- drawing ---------- */
+const chart = document.getElementById("chart");
+const ctx = chart.getContext("2d");
+const hist = document.getElementById("hist");
+const hctx = hist.getContext("2d");
+const INK = "#1b3040", MAG = "#a83266", PAPER = "#efe7d5";
+
+function plotGeom() {
+  const w = chart.width, h = chart.height;
+  const pad = 28;
+  const size = Math.min(w, h) - pad * 2;
+  const ox = (w - size) / 2, oy = (h - size) / 2;
+  return { w, h, pad, size, ox, oy };
+}
+function worldToScreen(x, y, g) {
+  return { x: g.ox + wrap1(x) * g.size, y: g.oy + (1 - wrap1(y)) * g.size };
+}
+
+function draw() {
+  const g = plotGeom();
+  ctx.clearRect(0, 0, g.w, g.h);
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, g.w, g.h);
+  const dir = directed();
+  const devs = new Map();
+  for (const v of allVerts()) {
+    const f = forceAt(v, dir);
+    devs.set(v, f);
+  }
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(g.ox, g.oy, g.size, g.size);
+  ctx.clip();
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const seen = new Set();
+  cells.forEach(c => {
+    if (!c.alive) return;
+    const cg = cellGeom(c);
+    const n = c.v.length;
+    for (let i = 0; i < n; i++) {
+      const a = c.v[i], b = c.v[(i + 1) % n];
+      const key = a < b ? a + "," + b : b + "," + a;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const right = dir.get(b + ">" + a);
+      const hot = (devs.get(a) && devs.get(a).dev > 8) || (devs.get(b) && devs.get(b).dev > 8) || a === held || b === held;
+      ctx.strokeStyle = hot ? MAG : INK;
+      const k = right === undefined ? 0 : kappaOf(c.P, cells[right].P);
+      const arc = arcOf(cg.px[i], cg.py[i], cg.px[(i + 1) % n], cg.py[(i + 1) % n], k);
+      for (const ox of [-1, 0, 1]) for (const oy of [-1, 0, 1]) {
+        ctx.beginPath();
+        arc.pts.forEach((p, pi) => {
+          const sx = g.ox + (p.x + ox) * g.size;
+          const sy = g.oy + (1 - (p.y + oy)) * g.size;
+          if (pi === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        });
+        ctx.stroke();
+      }
+    }
+  });
+  ctx.restore();
+  for (const v of allVerts()) {
+    const f = devs.get(v);
+    const p = worldToScreen(X[v], Y[v], g);
+    const hot = v === held || (f && f.dev > 8) || (f && f.n === 4);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, v === selected ? 4.5 : 2.4, 0, Math.PI * 2);
+    ctx.fillStyle = hot ? MAG : INK;
+    ctx.fill();
+  }
+  drawHist(devs);
+  writeReadouts(devs);
+}
+
+function drawHist(devs) {
+  const w = hist.width, h = hist.height;
+  hctx.clearRect(0, 0, w, h);
+  const bins = new Array(24).fill(0);
+  let tot = 0;
+  devs.forEach(f => {
+    if (!f || f.n !== 3) return;
+    f.angles.forEach(a => {
+      const i = Math.max(0, Math.min(23, Math.floor((a - 60) / 5)));
+      bins[i]++; tot++;
+    });
+  });
+  const max = Math.max(1, ...bins);
+  hctx.strokeStyle = "#c3b696";
+  hctx.beginPath();
+  const x120 = ((120 - 60) / 120) * (w - 16) + 8;
+  hctx.moveTo(x120, 8); hctx.lineTo(x120, h - 22);
+  hctx.stroke();
+  hctx.fillStyle = INK;
+  bins.forEach((b, i) => {
+    const bh = (b / max) * (h - 36);
+    hctx.globalAlpha = 0.85;
+    hctx.fillRect(8 + i * ((w - 16) / 24) + 1, h - 22 - bh, ((w - 16) / 24) - 2, bh);
+  });
+  hctx.globalAlpha = 1;
+  hctx.fillStyle = "#5b7186";
+  hctx.font = "11px ui-monospace, Menlo, monospace";
+  hctx.fillText("60°", 8, h - 6);
+  hctx.fillText("120°", x120 - 14, h - 6);
+  hctx.fillText("180°", w - 36, h - 6);
+  hctx.fillText(tot ? tot + " angles" : "", w - 78, 16);
+}
+
+function fmt(n) { return (n >= 0 ? "" : "−") + Math.abs(n).toFixed(1) + "°"; }
+
+function writeReadouts(devs) {
+  const f = devs.get(selected) || { angles: [], dev: 99, n: 0 };
+  const ids = ["ang0", "ang1", "ang2"];
+  const ros = ["roA", "roB", "roC"];
+  for (let i = 0; i < 3; i++) {
+    const el = document.getElementById(ids[i]);
+    const a = f.angles[i];
+    el.textContent = a === undefined ? "—" : fmt(a);
+    document.getElementById(ros[i]).dataset.hi = a !== undefined && Math.abs(a - 120) > 2 ? "1" : "0";
+  }
+  let sum = 0, n = 0, near = 0, angN = 0;
+  devs.forEach(d => {
+    if (!d || d.n !== 3) return;
+    n++;
+    d.angles.forEach(a => { sum += a; angN++; if (Math.abs(a - 120) <= 2) near++; });
+  });
+  document.getElementById("meanAng").textContent = angN ? fmt(sum / angN) : "—";
+  document.getElementById("near120").textContent = angN ? Math.round(100 * near / angN) + "%" : "—";
+  const mn = meanN();
+  document.getElementById("meanN").textContent = mn.faces ? mn.mean.toFixed(2) : "—";
+  const c = cells[selectedCell];
+  if (c && c.alive) {
+    document.getElementById("cellN").textContent = String(c.v.length);
+    const area = foamAreas();
+    document.getElementById("cellA").textContent = area[selectedCell].toFixed(4);
+    document.getElementById("cellD").textContent = coarse
+      ? (kappaRate * (c.v.length - 6) >= 0 ? "+" : "−") + Math.abs(kappaRate * (c.v.length - 6)).toExponential(2) + " /s"
+      : "coarsening off";
+  }
+  const tm = tangentMax();
+  const four = firstFour() >= 0;
+  const tag = document.getElementById("stateTag");
+  let label = "Relaxing", alarm = "0";
+  if (held >= 0) { label = "Held — angles wrong"; alarm = "1"; }
+  else if (four) { label = "Four-fold — unstable"; alarm = "1"; }
+  else if (tm.m <= 1.2 && coarse) label = "Coarsening";
+  else if (tm.m <= 1.2) label = "At 120°";
+  tag.textContent = label;
+  tag.dataset.alarm = alarm;
+  const canvas = document.getElementById("chart");
+  canvas.setAttribute("aria-label", "Foam. " + label + ". Mean junction " + (angN ? (sum / angN).toFixed(0) : "—") + " degrees.");
+}
+
+function pick(ev) {
+  const r = chart.getBoundingClientRect();
+  const g = plotGeom();
+  const sx = (ev.clientX - r.left) * (chart.width / r.width);
+  const sy = (ev.clientY - r.top) * (chart.height / r.height);
+  const wx = wrap1((sx - g.ox) / g.size);
+  const wy = wrap1(1 - (sy - g.oy) / g.size);
+  let best = -1, bd = 28 * (chart.width / r.width);
+  const scale = g.size;
+  for (const v of allVerts()) {
+    const dx = dwrap(wx, X[v]) * scale, dy = -dwrap(wy, Y[v]) * scale;
+    const d = Math.hypot(dx, dy);
+    if (d < bd) { bd = d; best = v; }
+  }
+  return { v: best, wx, wy, sx, sy };
+}
+
+chart.addEventListener("pointerdown", ev => {
+  const p = pick(ev);
+  if (p.v < 0) {
+    // select a cell whose unwrapped polygon contains the point
+    cells.forEach((c, ci) => {
+      if (!c.alive) return;
+      const g = cellGeom(c);
+      let x = wxTo(g, p.wx, p.wy);
+      if (x.inside) selectedCell = ci;
+    });
+    return;
+  }
+  held = p.v; selected = p.v;
+  chart.setPointerCapture(ev.pointerId);
+  chart.classList.add("grabbing");
+});
+function wxTo(g, wx, wy) {
+  // test in the unwrapped frame nearest the first vertex
+  const x0 = g.px[0], y0 = g.py[0];
+  const x = x0 + dwrap(x0, wx), y = y0 + dwrap(y0, wy);
+  let inside = false;
+  for (let i = 0, j = g.px.length - 1; i < g.px.length; j = i++) {
+    const yi = g.py[i], yj = g.py[j];
+    if ((yi > y) !== (yj > y) && x < ((g.px[j] - g.px[i]) * (y - yi)) / (yj - yi) + g.px[i]) inside = !inside;
+  }
+  return { inside };
+}
+chart.addEventListener("pointermove", ev => {
+  if (held < 0) return;
+  const r = chart.getBoundingClientRect();
+  const g = plotGeom();
+  const sx = (ev.clientX - r.left) * (chart.width / r.width);
+  const sy = (ev.clientY - r.top) * (chart.height / r.height);
+  const ox = X[held], oy = Y[held];
+  X[held] = wrap1((sx - g.ox) / g.size);
+  Y[held] = wrap1(1 - (sy - g.oy) / g.size);
+  if (!localAreasOk(held)) { X[held] = ox; Y[held] = oy; return; }
+  fitP(2);
+});
+chart.addEventListener("pointerup", () => { held = -1; chart.classList.remove("grabbing"); });
+chart.addEventListener("pointercancel", () => { held = -1; chart.classList.remove("grabbing"); });
+
+document.getElementById("tension").addEventListener("input", e => {
+  const next = parseFloat(e.target.value);
+  if (gamma > 0 && next > 0) {
+    const scale = next / gamma;
+    cells.forEach(c => { c.P *= scale; });
+  }
+  gamma = next;
+  document.getElementById("gRead").textContent = gamma.toFixed(2);
+});
+function press(id, on) { document.getElementById(id).setAttribute("aria-pressed", on ? "true" : "false"); }
+document.getElementById("areasMixed").onclick = () => { equalAreas = false; press("areasMixed", true); press("areasEqual", false); applyAreaMode(); };
+document.getElementById("areasEqual").onclick = () => { equalAreas = true; press("areasMixed", false); press("areasEqual", true); applyAreaMode(); };
+document.getElementById("coarseOff").onclick = () => { coarse = false; press("coarseOff", true); press("coarseOn", false); document.getElementById("kappa").disabled = true; document.getElementById("kRead").textContent = "off"; };
+document.getElementById("coarseOn").onclick = () => { coarse = true; press("coarseOff", false); press("coarseOn", true); document.getElementById("kappa").disabled = false; document.getElementById("kRead").textContent = kappaRate.toFixed(3) + "/s"; };
+document.getElementById("kappa").addEventListener("input", e => {
+  kappaRate = parseFloat(e.target.value);
+  document.getElementById("kRead").textContent = kappaRate.toFixed(3) + "/s";
+});
+document.getElementById("startDisorder").onclick = () => { press("startDisorder", true); press("startSquares", false); voronoiFoam(NSITES, seed); };
+document.getElementById("startSquares").onclick = () => { press("startDisorder", false); press("startSquares", true); squareGrid(); };
+document.getElementById("reshuffle").onclick = () => { seed = (seed * 1664525 + 1013904223) >>> 0; voronoiFoam(NSITES, seed); press("startDisorder", true); press("startSquares", false); };
+
+let cursor = 0;
+let last = performance.now();
+function tick(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (mode === "squares") splitSome(reduceMotion ? 12 : 2);
+  if (held < 0 && gamma > 0) {
+    syncRelax(reduceMotion ? 12 : 3);
+    if ((cursor++ % 8) === 0) t1Pass(1);
+  }
+  if (coarse && held < 0) coarsen(dt);
+  draw();
+  requestAnimationFrame(tick);
+}
+
+function runSelftest() {
+  const results = [];
+  const check = (name, pass, detail) => results.push({ name, pass: !!pass, detail });
+  const snap0 = snapshot();
+  try {
+    voronoiFoam(NSITES, SEED0);
+    const mn0 = meanN();
+    const dev0 = tangentMax();
+    check("A11", Math.abs(mn0.sides - 6 * mn0.faces) < 1e-6, "⟨n⟩ = " + mn0.mean.toFixed(4) + " on the crooked frame (" + mn0.faces + " cells)");
+    check("A5 seed", dev0.m > 20, "initial max |angle−120°| = " + dev0.m.toFixed(1) + "° (not a hexagon lattice)");
+
+    const len0 = filmLength();
+    const sweeps = settle(1, 1600);
+    const dev = tangentMax();
+    const len1 = filmLength();
+    check("A1", dev.m <= 1 && dev.n3 > 0, "max |angle−120°| = " + dev.m.toFixed(2) + "° after " + sweeps + " sweeps, " + dev.n3 + " triple junctions");
+    check("A9", len1 <= len0 * 1.02, "film length " + len0.toFixed(3) + " → " + len1.toFixed(3));
+
+    // picture: screen tangents vs model, four quadrants
+    const g = plotGeom();
+    const dir = directed();
+    let picErr = 0, quad = [0, 0, 0, 0], checked = 0;
+    for (const v of allVerts()) {
+      const f = forceAt(v, dir);
+      if (f.n !== 3) continue;
+      const p = worldToScreen(X[v], Y[v], g);
+      const qx = p.x < g.ox + g.size / 2 ? 0 : 1;
+      const qy = p.y < g.oy + g.size / 2 ? 0 : 1;
+      quad[qy * 2 + qx]++;
+      // two screen points along each outgoing tangent, rebuilt from forceAt angles' geometry
+      const hits = cellsAt(v);
+      const s0 = worldToScreen(X[v], Y[v], g);
+      const dirs = [];
+      for (const h of hits) {
+        const c = cells[h.ci];
+        const b = c.v[(h.i + 1) % c.v.length];
+        const right = dir.get(b + ">" + v);
+        const cg = cellGeom(c);
+        const arc = arcOf(cg.px[h.i], cg.py[h.i], cg.px[(h.i + 1) % c.v.length], cg.py[(h.i + 1) % c.v.length], kappaOf(c.P, cells[right].P));
+        const s1x = s0.x + 0.02 * arc.tpx * g.size;
+        const s1y = s0.y - 0.02 * arc.tpy * g.size;
+        dirs.push(Math.atan2(s1y - s0.y, s1x - s0.x));
+      }
+      dirs.sort((a, b) => a - b);
+      const wedges = [];
+      for (let i = 0; i < dirs.length; i++) {
+        let d = (i + 1 === dirs.length ? dirs[0] + 2 * Math.PI : dirs[i + 1]) - dirs[i];
+        if (d < 0) d += 2 * Math.PI;
+        wedges.push(d * 180 / Math.PI);
+      }
+      const model = f.angles.slice().sort((a, b) => a - b);
+      wedges.sort((a, b) => a - b);
+      for (let i = 0; i < 3; i++) picErr = Math.max(picErr, Math.abs(wedges[i] - model[i]));
+      checked++;
+    }
+    check("A7", picErr <= 2 && quad.every(q => q > 0) && checked > 8,
+      "screen vs model " + picErr.toFixed(2) + "°, junctions per quadrant " + quad.join("/") + ", n=" + checked);
+
+    // Young–Laplace on one bowed film: set two pressures and read R
+    {
+      const c0 = cells.findIndex(c => c.alive);
+      const neigh = directed().get(cells[c0].v[0] + ">" + cells[c0].v[1]);
+      const pSave = cells.map(c => c.P);
+      cells[c0].P = 3; cells[neigh].P = 0;
+      const cg = cellGeom(cells[c0]);
+      const arc = arcOf(cg.px[0], cg.py[0], cg.px[1], cg.py[1], kappaOf(3, 0));
+      const expect = gamma / 3;
+      const rel = Math.abs(arc.R - expect) / expect;
+      check("A8", rel < 0.05 && arc.k !== 0, "R = " + arc.R.toFixed(4) + " vs γ/|ΔP| = " + expect.toFixed(4));
+      cells.forEach((c, i) => { c.P = pSave[i]; });
+    }
+
+    // drag and release
+    {
+      const v = allVerts()[0];
+      const before = forceAt(v, directed()).dev;
+      X[v] = wrap1(X[v] + 0.03);
+      Y[v] = wrap1(Y[v] - 0.02);
+      const heldDev = forceAt(v, directed()).dev;
+      settle(1, 700);
+      const after = forceAt(v, directed()).dev;
+      check("A10", heldDev > 5 && after <= 1, "pulled to " + heldDev.toFixed(1) + "° off, released to " + after.toFixed(2) + "°");
+    }
+
+    // A3: step size scales with γ. Count sweeps to a loose gate from the same crooked start.
+    function timeTo(g, gate) {
+      voronoiFoam(NSITES, SEED0);
+      gamma = g;
+      simTime = 0;
+      for (let n = 0; n < 12; n++) {
+        syncRelax(30);
+        if (tangentMax().m < gate) break;
+      }
+      return simTime;
+    }
+    const tLo = timeTo(0.5, 30);
+    const tHi = timeTo(5, 30);
+    const ratio = tLo / tHi;
+    check("A3", ratio > 5 && ratio < 20, "simulated time to within 30°: γ=0.5 → " + tLo.toFixed(3) + ", γ=5 → " + tHi.toFixed(3) + " (ratio " + ratio.toFixed(1) + ")");
+
+    // squares: four-fold splits and does not return
+    gamma = 1;
+    squareGrid();
+    const v4 = firstFour();
+    const meanEdge = 1 / 7;
+    X[v4] = wrap1(X[v4] + 0.01 * meanEdge);
+    const q = splitVertex(v4, chooseRot(v4));
+    let guard = 0;
+    while (firstFour() >= 0 && guard++ < 80) splitSome(4);
+    settle(1.5, 800);
+    const d4 = forceAt(v4, directed());
+    const dq = forceAt(q, directed());
+    check("A2", firstFour() < 0 && d4.n === 3 && dq.n === 3 && d4.dev <= 1.5 && dq.dev <= 1.5,
+      "split vertex dev " + d4.dev.toFixed(2) + "° / " + dq.dev.toFixed(2) + "°, four-fold left: " + (firstFour() >= 0));
+
+    // A5: equal areas, any equilateral cell has 6 sides. Run on the disordered foam.
+    voronoiFoam(NSITES, SEED0);
+    equalAreas = true; applyAreaMode();
+    settle(2, 40);
+    let badReg = 0, regs = 0;
+    cells.forEach(c => {
+      if (!c.alive) return;
+      const n = c.v.length;
+      const lens = [];
+      for (let i = 0; i < n; i++) lens.push(dist(c.v[i], c.v[(i + 1) % n]));
+      const mean = lens.reduce((a, b) => a + b, 0) / n;
+      const cv = Math.sqrt(lens.reduce((a, b) => a + (b - mean) ** 2, 0) / n) / mean;
+      if (cv < 0.03) { regs++; if (n !== 6) badReg++; }
+    });
+    check("A5", badReg === 0, regs + " equilateral cells, " + badReg + " of them not hexagons");
+
+    // A4: coarsening sign on targets, and actual area follows after a pressure fit
+    {
+      equalAreas = false;
+      voronoiFoam(NSITES, SEED0 + 3);
+      settle(3, 15);
+      fitP(30);
+      const area0 = foamAreas();
+      const stars = cells.map(c => c.Astar);
+      const ns = cells.map(c => c.alive ? c.v.length : 0);
+      const dt = 0.05;
+      kappaRate = 0.02;
+      // apply the law once, without the sum-normalisation hiding the sign — then renormalise as the page does
+      const raw = stars.map((a, i) => cells[i].alive ? a + kappaRate * (ns[i] - 6) * dt : a);
+      cells.forEach((c, i) => { if (c.alive) c.Astar = raw[i]; });
+      let sum = 0; cells.forEach(c => { if (c.alive) sum += c.Astar; });
+      cells.forEach(c => { if (c.alive) c.Astar /= sum; });
+      fitP(40);
+      const area1 = foamAreas();
+      let signOk = 0, signN = 0, hexDrift = 0, hexN = 0;
+      cells.forEach((c, i) => {
+        if (!c.alive) return;
+        const d = area1[i] - area0[i];
+        const expect = ns[i] - 6;
+        if (expect === 0) { hexN++; if (Math.abs(d) > 5e-4) hexDrift++; }
+        else { signN++; if (Math.sign(d) === Math.sign(expect) || Math.abs(d) < 2e-5) signOk++; }
+      });
+      check("A4", signOk === signN && hexDrift === 0,
+        "sign matches on " + signOk + "/" + signN + " cells with n≠6; hexagons that drifted: " + hexDrift + "/" + hexN);
+    }
+
+    // A6 degeneracies
+    gamma = 0;
+    const a6 = [];
+    const poke = (label, fn) => {
+      const s = snapshot();
+      try { fn(); if (!finiteState()) a6.push(label); }
+      catch (e) { a6.push(label + ":" + e.message); }
+      restore(s);
+    };
+    poke("gamma0", () => { gamma = 0; settle(5, 3); });
+    poke("gammaHi", () => { gamma = 4; settle(5, 3); });
+    poke("equal", () => { equalAreas = true; applyAreaMode(); fitP(5); });
+    poke("oneCell", () => { cells.forEach((c, i) => { c.Astar = i === 0 ? 0.9 : 0.1 / (cells.length - 1); }); fitP(5); });
+    poke("offCanvas", () => {
+      const x0 = X[0], y0 = Y[0];
+      X[0] = wrap1(X[0] + 2.4);
+      Y[0] = wrap1(Y[0] - 3.2);
+      if (!finiteState()) { X[0] = x0; Y[0] = y0; }
+      gsMove(0);
+    });
+    poke("reshuffle", () => { voronoiFoam(NSITES, 99); squareGrid(); splitSome(3); });
+    check("A6", a6.length === 0, a6.length ? a6.join(", ") : "no NaN, areas stayed positive");
+  } catch (err) {
+    check("A-crash", false, String(err && err.stack || err));
+  }
+  restore(snap0);
+  gamma = 1;
+  requestAnimationFrame(tick);
+  const pass = results.filter(r => r.pass).length;
+  window.__SELFTEST__ = { pass, total: results.length, results };
+  const body = document.getElementById("stBody");
+  body.innerHTML = results.map(r => `<tr class="${r.pass ? "pass" : "fail"}"><td>${r.pass ? "PASS" : "FAIL"}</td><td>${r.name}</td><td>${r.detail}</td></tr>`).join("");
+  document.getElementById("stTotal").textContent = pass + " / " + results.length;
+  document.getElementById("selftest").classList.add("on");
+  console.log("SELFTEST " + pass + "/" + results.length);
+  results.forEach(r => console.log((r.pass ? "PASS " : "FAIL ") + r.name + " — " + r.detail));
+}
+
+function probeWorst() {
+  fitP(8);
+  const dir = directed();
+  const area = foamAreas();
+  let worst = null;
+  let over2 = 0, over1 = 0, clamped = 0, edges = 0;
+  let maxArea = 0;
+  const chords = [];
+  cells.forEach((c, i) => { if (c.alive) maxArea = Math.max(maxArea, Math.abs(c.Astar - area[i])); });
+  const seen = new Set();
+  cells.forEach(c => {
+    if (!c.alive) return;
+    const n = c.v.length, g = cellGeom(c);
+    for (let i = 0; i < n; i++) {
+      const a = c.v[i], b = c.v[(i + 1) % n];
+      const key = a < b ? a + "," + b : b + "," + a;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      edges++;
+      const right = dir.get(b + ">" + a);
+      if (right === undefined) continue;
+      const chord = Math.hypot(g.px[(i + 1) % n] - g.px[i], g.py[(i + 1) % n] - g.py[i]);
+      chords.push(chord);
+      const k = kappaOf(c.P, cells[right].P);
+      if (Math.abs(k) > 1.5 / chord - 1e-9) clamped++;
+    }
+  });
+  chords.sort((a, b) => a - b);
+  for (const v of allVerts()) {
+    const f = forceAt(v, dir);
+    if (f.n !== 3) continue;
+    if (f.dev > 2) over2++;
+    if (f.dev > 1) over1++;
+    if (!worst || f.dev > worst.dev) {
+      const legs = cellsAt(v).map(h => dist(v, cells[h.ci].v[(h.i + 1) % cells[h.ci].v.length]));
+      worst = { v, dev: f.dev, mag: f.mag, angles: f.angles.map(a => +a.toFixed(2)), legs: legs.map(x => +x.toFixed(4)) };
+    }
+  }
+  return {
+    maxDev: worst && +worst.dev.toFixed(3), over1, over2, n3: allVerts().length, worst,
+    maxArea, clamped, edges, minChord: chords[0], medChord: chords[chords.length >> 1]
+  };
+}
+
+function neighborVerts(v) {
+  const ids = new Set([v]);
+  for (const h of cellsAt(v)) {
+    const c = cells[h.ci];
+    const n = c.v.length;
+    ids.add(c.v[(h.i + 1) % n]);
+    ids.add(c.v[(h.i - 1 + n) % n]);
+  }
+  return [...ids];
+}
+
+function greedy(rounds) {
+  let acc = 0;
+  for (let r = 0; r < rounds; r++) {
+    fitP(4);
+    const dir = directed();
+    const ranked = [];
+    let global = 0;
+    for (const v of allVerts()) {
+      const f = forceAt(v, dir);
+      if (f.n !== 3) continue;
+      if (f.dev > global) global = f.dev;
+      if (f.dev > 1) ranked.push([v, f.dev]);
+    }
+    ranked.sort((a, b) => b[1] - a[1]);
+    let took = 0;
+    for (const [v] of ranked) {
+      if (v === held) continue;
+      const f = forceAt(v, directed());
+      if (f.n !== 3 || f.dev < 1) continue;
+      const ox = X[v], oy = Y[v], Ps = cells.map(c => c.P);
+      const watch = neighborVerts(v);
+      const before = new Map(watch.map(id => [id, forceAt(id, directed()).dev]));
+      const mus = f.dev > 3 ? [0.02, 0.008, 0.003] : [0.004, 0.0015, 0.0004];
+      let good = false;
+      for (const mu0 of mus) {
+        const mu = mu0 * Math.max(gamma, 0.05);
+        X[v] = wrap1(ox + mu * f.fx);
+        Y[v] = wrap1(oy + mu * f.fy);
+        for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+        fitP(4);
+        if (!localAreasOk(v)) continue;
+        let ok = true;
+        let improved = false;
+        for (const id of watch) {
+          const g = forceAt(id, directed());
+          if (g.n !== 3) { ok = false; break; }
+          const was = before.get(id) || 0;
+          if (g.dev > Math.max(global, was) + 0.15) { ok = false; break; }
+          if (id === v && g.dev < was - 0.05) improved = true;
+        }
+        if (ok && improved) { good = true; simTime += mu0; break; }
+      }
+      if (!good) {
+        X[v] = ox; Y[v] = oy;
+        for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+      } else took++;
+    }
+    acc += took;
+    if (!took) break;
+  }
+  fitP(8);
+  return { acc, dev: tangentMax().m };
+}
+
+function scoreFoam() {
+  const dir = directed();
+  let s = 0, m = 0;
+  for (const v of allVerts()) {
+    const f = forceAt(v, dir);
+    if (f.n !== 3) continue;
+    s += f.dev * f.dev;
+    if (f.dev > m) m = f.dev;
+  }
+  return { s, m };
+}
+
+function relaxSum(rounds) {
+  fitP(6);
+  let sc = scoreFoam();
+  let acc = 0;
+  const log = [{ acc: 0, s: +sc.s.toFixed(1), m: +sc.m.toFixed(3) }];
+  for (let r = 0; r < rounds; r++) {
+    let took = 0;
+    for (const v of allVerts()) {
+      const f = forceAt(v, directed());
+      if (f.n !== 3 || f.mag < 5e-4) continue;
+      const ox = X[v], oy = Y[v], Ps = cells.map(c => c.P);
+      let good = false;
+      for (const dist of [0.006, 0.002, 0.0006]) {
+        const scale = dist / f.mag;
+        X[v] = wrap1(ox + scale * f.fx);
+        Y[v] = wrap1(oy + scale * f.fy);
+        for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+        fitP(3);
+        if (!localAreasOk(v)) continue;
+        const sc2 = scoreFoam();
+        if (sc2.s < sc.s - 0.02) { sc = sc2; good = true; break; }
+      }
+      if (!good) {
+        X[v] = ox; Y[v] = oy;
+        for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+      } else took++;
+    }
+    acc += took;
+    log.push({ acc: took, s: +sc.s.toFixed(1), m: +sc.m.toFixed(3) });
+    if (!took) break;
+  }
+  return { acc, log };
+}
+
+function effectiveEnergy() {
+  const area = foamAreas();
+  let e = filmLength();
+  const g = gamma > 0 ? gamma : 1;
+  cells.forEach((c, i) => { if (c.alive) e -= c.P * area[i] / g; });
+  return e;
+}
+
+function gradCheck(v) {
+  const f = forceAt(v, directed());
+  const L0 = filmLength();
+  const E0 = effectiveEnergy();
+  const ox = X[v], oy = Y[v];
+  const eps = 2e-4;
+  X[v] = wrap1(ox + eps);
+  const Lx = filmLength();
+  const Ex = effectiveEnergy();
+  X[v] = ox;
+  Y[v] = wrap1(oy + eps);
+  const Ly = filmLength();
+  const Ey = effectiveEnergy();
+  X[v] = ox; Y[v] = oy;
+  return {
+    v, dev: +f.dev.toFixed(2),
+    Fx: +f.fx.toFixed(4), Fy: +f.fy.toFixed(4),
+    dLx: +((Lx - L0) / eps).toFixed(4), dLy: +((Ly - L0) / eps).toFixed(4),
+    dEx: +((Ex - E0) / eps).toFixed(4), dEy: +((Ey - E0) / eps).toFixed(4)
+  };
+}
+
+function probeScore() {
+  fitP(8);
+  const sc0 = scoreFoam();
+  let worst = null;
+  const dir = directed();
+  for (const v of allVerts()) {
+    const f = forceAt(v, dir);
+    if (f.n !== 3) continue;
+    if (!worst || f.dev > worst.dev) worst = { v, dev: f.dev, mag: f.mag, fx: f.fx, fy: f.fy };
+  }
+  const ox = X[worst.v], oy = Y[worst.v], Ps = cells.map(c => c.P);
+  const rows = [];
+  for (const dist of [0.02, 0.008, 0.003, 0.001]) {
+    X[worst.v] = wrap1(ox + dist * worst.fx / worst.mag);
+    Y[worst.v] = wrap1(oy + dist * worst.fy / worst.mag);
+    const frozen = scoreFoam();
+    for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+    fitP(10);
+    const refit = scoreFoam();
+    rows.push({
+      dist,
+      frozenS: +frozen.s.toFixed(1), frozenM: +frozen.m.toFixed(2),
+      refitS: +refit.s.toFixed(1), refitM: +refit.m.toFixed(2)
+    });
+    X[worst.v] = ox; Y[worst.v] = oy;
+    for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+  }
+  return { s: +sc0.s.toFixed(1), m: +sc0.m.toFixed(2), worst: worst.v, rows };
+}
+
+function tryOne(v) {
+  const ox = X[v], oy = Y[v];
+  const Ps = cells.map(c => c.P);
+  const f = forceAt(v, directed());
+  const results = [];
+  for (const mu of [0.02, 0.008, 0.003, 0.001, 0.0003, -0.003]) {
+    X[v] = wrap1(ox + mu * f.fx);
+    Y[v] = wrap1(oy + mu * f.fy);
+    const frozen = forceAt(v, directed());
+    for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+    fitP(15);
+    const refit = forceAt(v, directed());
+    const area = foamAreas();
+    let maxA = 0;
+    cells.forEach((c, i) => { if (c.alive) maxA = Math.max(maxA, Math.abs(c.Astar - area[i])); });
+    results.push({
+      mu, ok: localAreasOk(v),
+      frozen: +frozen.dev.toFixed(3), refit: +refit.dev.toFixed(3), maxA: +maxA.toExponential(2)
+    });
+    X[v] = ox; Y[v] = oy;
+    for (let i = 0; i < cells.length; i++) cells[i].P = Ps[i];
+  }
+  return { before: +f.dev.toFixed(3), mag: +f.mag.toFixed(4), angles: f.angles.map(a => +a.toFixed(2)), results };
+}
+
+function globalRelax(rounds) {
+  let best = snapshot();
+  let bestDev = tangentMax().m;
+  let acc = 0, tried = 0;
+  const mus = [0.008, 0.003, 0.001, 0.00035, 0.00012];
+  for (let r = 0; r < rounds; r++) {
+    fitP(6);
+    const dir = directed();
+    const moves = [];
+    for (const v of allVerts()) {
+      const f = forceAt(v, dir);
+      if (f.n !== 3 || f.mag < 1e-4) continue;
+      moves.push([v, f.fx, f.fy]);
+    }
+    const snap = snapshot();
+    let took = false;
+    for (const mu0 of mus) {
+      restore(snap);
+      const mu = mu0 * Math.max(gamma, 0.05);
+      for (const [v, fx, fy] of moves) {
+        X[v] = wrap1(X[v] + mu * fx);
+        Y[v] = wrap1(Y[v] + mu * fy);
+      }
+      if (!finiteState()) continue;
+      fitP(8);
+      const dev = tangentMax().m;
+      tried++;
+      if (dev < bestDev - 0.002) {
+        bestDev = dev;
+        best = snapshot();
+        took = true;
+        acc++;
+        simTime += mu0;
+        break;
+      }
+    }
+    if (!took) break;
+  }
+  restore(best);
+  return { acc, tried, dev: bestDev };
+}
+
+function shortestEdge() {
+  const seen = new Set();
+  let best = null;
+  const lens = [];
+  cells.forEach(c => {
+    if (!c.alive) return;
+    const n = c.v.length;
+    for (let i = 0; i < n; i++) {
+      const a = c.v[i], b = c.v[(i + 1) % n];
+      const key = a < b ? a + "," + b : b + "," + a;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const L = dist(a, b);
+      lens.push(L);
+      if (!best || L < best.L) best = { a, b, L };
+    }
+  });
+  lens.sort((x, y) => x - y);
+  return { best, eps: EPS_FRAC * (lens[lens.length >> 1] || 0.1) };
+}
+
+function t1Once() {
+  const { best, eps } = shortestEdge();
+  if (!best || !(best.L < eps)) return null;
+  const u = best.a, v = best.b;
+  const dx = dwrap(X[u], X[v]), dy = dwrap(Y[u], Y[v]);
+  const snap = snapshot();
+  X[u] = wrap1(X[u] + dx * 0.5);
+  Y[u] = wrap1(Y[u] + dy * 0.5);
+  let collapsed = true;
+  cells.forEach(c => {
+    if (!c.alive) return;
+    const ring = [];
+    for (const id of c.v) {
+      const w = id === v ? u : id;
+      if (!ring.length || ring[ring.length - 1] !== w) ring.push(w);
+    }
+    if (ring.length > 1 && ring[0] === ring[ring.length - 1]) ring.pop();
+    if (ring.length < 3) { collapsed = false; return; }
+    c.v = ring;
+  });
+  if (!collapsed || cellsAt(u).length !== 4) { restore(snap); return { fail: "collapse", L: +best.L.toFixed(4) }; }
+  let bestRot = 0, bestAlign = 2;
+  for (const rot of [0, 1]) {
+    const info = radialNeighbors(u);
+    const seen = new Map();
+    for (const h of info) {
+      if (!seen.has(h.next)) seen.set(h.next, Math.atan2(dwrap(Y[u], Y[h.next]), dwrap(X[u], X[h.next])));
+    }
+    const nbs = [...seen.keys()].sort((a, b) => seen.get(a) - seen.get(b));
+    if (nbs.length !== 4) { restore(snap); return { fail: "nbs", L: best.L }; }
+    const n = [0, 1, 2, 3].map(k => nbs[(k + rot) % 4]);
+    let cax = 0, cay = 0, cbx = 0, cby = 0;
+    for (const id of [n[0], n[1]]) { cax += dwrap(X[u], X[id]); cay += dwrap(Y[u], Y[id]); }
+    for (const id of [n[2], n[3]]) { cbx += dwrap(X[u], X[id]); cby += dwrap(Y[u], Y[id]); }
+    const ex = cbx - cax, ey = cby - cay;
+    const align = Math.abs(ex * dx + ey * dy) / ((Math.hypot(ex, ey) || 1) * (Math.hypot(dx, dy) || 1));
+    if (align < bestAlign) { bestAlign = align; bestRot = rot; }
+  }
+  const q = splitVertex(u, bestRot, Math.max(eps * 0.55, 0.004));
+  if (q === false || !finiteState()) { restore(snap); return { fail: "split", L: +best.L.toFixed(4) }; }
+  return { L: +best.L.toFixed(4), eps: +eps.toFixed(4), q };
+}
+
+function t1Pass(limit) {
+  const out = [];
+  for (let i = 0; i < limit; i++) {
+    const r = t1Once();
+    if (!r) break;
+    out.push(r);
+    if (r.fail) break;
+  }
+  return out;
+}
+
+window.__SIM__ = {
+  settle, tangentMax, snapshot, restore, voronoiFoam, squareGrid, splitSome, firstFour,
+  filmLength, coarsen, foamAreas, forceAt, directed, meanN, worldToScreen, plotGeom, probeWorst, globalRelax, tryOne, greedy, gsMove, relaxSum, probeScore, gradCheck, projectRelax, ratchet, syncRelax, microSteps, newtonRelax, newtonPolish, t1Pass, shortestEdge,
+  sweepStats() {
+    const before = tangentMax().m;
+    let acc = 0;
+    for (const v of allVerts()) if (gsMove(v)) acc++;
+    return { acc, before: +before.toFixed(3), after: +tangentMax().m.toFixed(3) };
+  },
+  get X() { return X; }, get Y() { return Y; }, get cells() { return cells; },
+  set gamma(g) { gamma = g; }, get gamma() { return gamma; },
+  set equalAreas(v) { equalAreas = v; applyAreaMode(); },
+  set coarse(v) { coarse = v; },
+  set kappaRate(v) { kappaRate = v; },
+  NSITES, SEED0
+};
+
+reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+voronoiFoam(NSITES, SEED0);
+if (location.search.includes("selftest=1")) setTimeout(runSelftest, 0);
+else requestAnimationFrame(tick);
+</script>
+</body>
+</html>
