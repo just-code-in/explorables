@@ -5,6 +5,8 @@ Run: `node qa.mjs --shots` (needs Playwright; serve the repo root first, e.g.
 
 ## Episode-specific checks
 
+The shared QA rule says to exercise every control, including this list:
+
 - Drag the wind.
 - Steer through the no-go zone and confirm in irons. A boat carries her way; wait until she has actually stopped.
 - Toggle the rig and confirm the no-go zone visibly widens.

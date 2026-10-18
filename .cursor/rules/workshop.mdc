@@ -1,0 +1,21 @@
+---
+description: Workshop pipeline for an explorable. Read only when the user asks about the workshop, its stages, or who owns a stage.
+alwaysApply: false
+---
+
+# Workshop
+
+Six stages. Do not skip or reorder them. Judgment stays in the strong-model session. The Hermes fleet (Nous Research agents) verifies, tests, and publishes. It never originates content. Cursor cloud agents are not that fleet; the always-on explorables rule binds them directly.
+
+| Stage | Who | Output |
+|---|---|---|
+| 1 Commission | Human + strong model. Never delegated. | Design spec: experience, model, anchors, layout, simplifications, non-goals. The contract. |
+| 2 Research | Fleet verifies claim clusters in parallel; strong model consolidates. | `FACTSHEET.md`. Worker summaries are the deliverable. Card briefs specify units and what a good answer looks like. |
+| 3 Build | Strong model | `index.html`, selftest green |
+| 4 QA | Browser agent, looped with Stage 3 | Recorded clean pass in `qa/` |
+| 5 Publish | Build session pushes; a human sends the announcement | Gallery card on `main` (Pages deploys from `main`). Draft the `#olympus` post and stop. |
+| 6 Promote | Fleet, only after a human asks | Social draft and teaser. Never automatic. |
+
+A human still looks at the picture after a green selftest. Publishing the page is reversible. Sending the announcement is not: "announce it" means prepare the text for approval.
+
+Full pipeline: `WORKSHOP.md` at the repo root.
