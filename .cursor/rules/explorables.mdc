@@ -1,0 +1,50 @@
+---
+description: How an explorable episode is built — single file, fact sheet, selftest, QA
+alwaysApply: true
+---
+
+# Explorables
+
+An episode is one self-contained HTML file: vanilla JS, a canvas, inline CSS. No dependencies, no CDN, no build step. It must load on a phone, work offline, and still run years from now.
+
+Open the file directly, or serve the repo root (`python3 -m http.server`). Append `?selftest=1` to run the physics assertions and print them to the console.
+
+## Layout
+
+- `index.html` at the repo root is the gallery. Add the episode's card there when it ships.
+- Each episode is a kebab-case directory (`against-the-wind/`) containing:
+  - `index.html` — the episode
+  - `FACTSHEET.md` — ground truth for every number
+  - `qa/qa.mjs` — Playwright harness
+  - `qa/README.md` — the recorded clean pass, and that episode's checks
+  - `qa/*.png` — screenshots from that pass
+
+## Physics
+
+`FACTSHEET.md` is ground truth. The builder does not renegotiate it.
+
+- Every constant is **measured** (cited), **fitted** (chosen to reproduce a sourced anchor), or **`UNVERIFIED`**. An unsourced number is marked `UNVERIFIED`. Do not invent one.
+- Interesting results emerge from the force balance. Do not hard-code the headline outcome (Episode 1 is not told "six points"; Steel's 40° bracing limit produces it).
+- Encode the fact sheet's anchors as runnable assertions in the page. Expose `window.__SELFTEST__` (`{ pass, total, results }`) and `window.__SIM__` so `qa/qa.mjs` can drive the same physics the animation uses.
+- State simplifications in the page itself (Episode 1: no heel, no waves, quasi-static forces, one aggregate sail).
+
+## Build order
+
+Write the selftest first, from the fact sheet. Watch it fail, then write the physics until it passes. The anchors are the specification of correct.
+
+## QA
+
+Selftest green before anything else. Then, at every viewport, through every interaction:
+
+1. Console: zero errors.
+2. Viewports: phone **390×844**, tablet **768×1024**, desktop **1440×950**. No horizontal overflow, nothing clipped or overlapping. Drag targets ≥44px (`button` and `input[type=range]` are 44px tall; the harness flags controls under 24px).
+3. Exercise every control, including the episode-specific checks listed in its `qa/README.md`.
+4. Degeneracies listed in that same `qa/README.md`. Nothing may NaN or freeze.
+5. Assert the picture in world coordinates, not only the model. A model-only harness will bless a mirrored drawing.
+
+Commit the clean pass: `qa/README.md` plus screenshots named `{phone|tablet|desktop}-{state}.png` (Episode 1: `phone-sloop`, `phone-square-traced`, `tablet-sloop`, `desktop-sloop`, `desktop-square-traced`, `desktop-running-downwind`). Run `node qa/qa.mjs --shots` against a local server. If Playwright cannot run, execute the same checklist and record it.
+
+## Stops
+
+- Never push to `main` or edit a `FACTSHEET.md` without asking.
+- Cursor cloud agents follow the same rules: they never originate content, and they stop at a draft for anything announced.
